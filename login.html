@@ -27,25 +27,52 @@
   </div>
 </div>
 
-<div class="main">
-  <body>
+  <div class="main">
       <div class="gomiddle">
           <div><h1>윤쌤영어 홈페이지에 오신 것을 환영합니다.</h1></div>
               <a href="login.html">로그인</a>
               | <a href="signup.html">회원가입</a>
       </div>
       <div class="box">
-          <form action="login_process.php" method="post">
-              <div><label>아이디: </label><input type="text" name="id"/></div>
-              <div><label>비밀번호: </label><input type="password" name="pw"/></div>
+          <form onsubmit="login(event)">
+              <div><label>아이디: </label><input type="text" id= "loginId" name="id"/></div>
+              <div><label>비밀번호: </label><input type="password" id="loginPw" name="pw"/></div>
               <div class="button">
                   <input class="submit" type="submit" value="Login"/>
                   <input class="reset" type="reset" value="Cancel"/>
               </div>
           </form>
       </div>
-  </body>
-</div>
+  </div>
+
+  <script>
+    function login(event) {
+      event.preventDefault();
+
+      const user_id = document.getElementById("loginId").value;
+      const password = document.getElementById("loginPw").value;
+
+      fetch("/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_id: user_id,
+          password: password
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+
+        if (data.success) {
+          sessionStorage.setItem("loginUser", JSON.stringify(data.user));
+          location.href = "yunsam.html";
+        }
+      });
+    }
+  </script>
 
 <!-- Footer -->
 <footer>

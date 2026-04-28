@@ -47,7 +47,7 @@
   </div>
 
   <div class="main">
-    <h2>통진고2 손채원</h2>
+    <h2 id="userName">로그인이 필요합니다</h2>
     <hr>
     <h3 class="strong">고2 주1회(윤T)</h3>
 
@@ -108,6 +108,19 @@
     </table>
   </div>
 </div>
+
+<script>
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (loginUser) {
+    const user = JSON.parse(loginUser);
+    document.getElementById("userName").textContent =
+      user.school + " " + user.name;
+  } else {
+    document.getElementById("userName").textContent =
+      "로그인이 필요합니다";
+  }
+</script>
 
 <!-- Footer -->
 <footer>
