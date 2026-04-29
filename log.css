@@ -12,16 +12,34 @@ body {
            margin: 20px auto;
            width: 400px;}
 
-.box input[type="text"],
-.box input[type="password"],
-.box input[type="number"] {
-    width: 140px;
-    height: 20px;
-    margin: 5px;
+.box div {
+  margin-bottom: 10px;
 }
 
-.box select  {width: 150px; height: 18px; font-size: 10px;}
-label {padding-left:20px; display: inline-block; width: 100px;}
+.box label {
+  display: inline-block;
+  width: 110px;
+  padding-left: 20px;
+  font-size: 14px;
+}
+
+.box input[type="text"],
+.box input[type="password"],
+.box input[type="number"],
+.box select {
+  width: 180px;
+  height: 32px;
+  margin: 5px;
+  padding: 5px 8px;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.box select {
+  background-color: white;
+}
 * {
   box-sizing: border-box;
 }

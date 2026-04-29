@@ -39,10 +39,18 @@
             <div class="box">
                 <div><label>학교: </label><input type ="text" name="school" id="school" placeholder="김포고1" autofocus/></div>
                 <div><label>이름: </label><input type="text" name="name" id="name"/></div>
+                <div><label>반명: </label>
+                <select name="class" id="user_class">
+                    <option value="고3">고3</option>
+                    <option value="고2 주2회">고2 주2회</option>
+                    <option value="고2 주1회">고2 주1회</option>
+                    <option value="고1 주2회">고1 주2회</option>
+                    <option value="고1 주1회">고1 주1회</option>
+                    <option>중3</option>
+                </select></div>
                 <div><label>출석코드: </label>
-                    <input type="number" name="code" id="code" placeholder="0000" required/>
+                    <input type="text" name="id" id="user_id" placeholder="0000" required/>
                 </div>
-                <div><label>아이디: </label><input type="text" name="id" id="id" required/></div>
                 <div><label>비밀번호: </label><input type="password" name="pw" id="pw" required/></div>
             
                 <div class="button">
@@ -51,15 +59,15 @@
                 </div>
             </div>
         </form>
-        
+    </div>
     <script>
     function signup(event) {
         event.preventDefault();
 
         const school = document.getElementById("school").value;
         const name = document.getElementById("name").value;
-        const code = document.getElementById("code").value;
-        const user_id = document.getElementById("id").value;
+        const user_class = document.getElementById("user_class").value;
+        const user_id = document.getElementById("user_id").value;
         const password = document.getElementById("pw").value;
 
         fetch("/signup", {
@@ -70,9 +78,9 @@
         body: JSON.stringify({
             school: school,
             name: name,
-            code: code,
             user_id: user_id,
-            password: password
+            password: password,
+            user_class : user_class
         })
         })
         .then(response => response.json())
@@ -86,14 +94,12 @@
     }
     </script>
 
-    </div>
-
-    <!-- Footer -->
-    <footer>
-    <h2>call: 070-4450-2260</h2>
-    <h3>위치: 경기 김포시 사우중로 73번길 38 3층</h3>
-    <p>*매주 일요일, 월요일은 학원 휴원일입니다.</p>
-    </footer>
+<!-- Footer -->
+<footer>
+<h2>call: 070-4450-2260</h2>
+<h3>위치: 경기 김포시 사우중로 73번길 38 3층</h3>
+<p>*매주 일요일, 월요일은 학원 휴원일입니다.</p>
+</footer>
 
 </body>
 </html>

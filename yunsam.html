@@ -7,8 +7,118 @@
 <link rel="stylesheet" type="text/css" href="main.css">
 </head>
 <body>
+<!-- Header -->
+<header>
+  <a href="yunsam.html"> 
+    <img src="yunsam.jpeg" alt="img">
+  </a>
+</header>
+
+<!-- Navigation Bar -->
+<div class="navbar">
+  <a href="announce.html">공지사항</a>
+  <a href="test.html">단어</a>
+  <a href="daily.html">데일리 완성도</a>
+  <a href="hw.html">숙제</a>
+
+  <div class="nav-right" id="navRight">
+      <a href="login.html">Login</a>
+      <a href="yunsam.html">My Page</a>
+  </div>
+</div>
+
+<!-- Content Container -->
+<div class="container">
+  <div class="side">
+    <h3>공지사항</h3>
+    <div id="noticeBox">
+      공지사항을 불러오는 중입니다.
+    </div>
+
+    <h2>명예의 전당</h2>
+    <h5>26년도 윤팸이들</h5>
+    <div class="fakeimg" style="height:200px;"><Image></div>
+
+    <h5>25년도 윤팸이들</h5>
+    <div class="fakeimg" style="height:200px;">Image</div>
+    
+    <p>Some text about me in culpa qui officia deserunt mollit anim..</p>
+  </div>
+
+  <div class="main">
+    <h2 id="userName">로그인이 필요합니다</h2>
+    <hr>
+    <h3 class="strong" id="userClass">-</h3>
+    <h2>출결 및 시험 기록</h2>
+
+    <table border="1">
+    <tbody>
+      <tr id="recordWeekRow">
+        <th>날짜</th>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>  
+      </tr>
+      <tr id="recordAttendanceRow">
+        <th>출결</th>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr id="recordVocabRow">
+        <th>단어시험</th>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>  
+      </tr>
+    </tbody>
+  </table>
+
+    <div class="homework">
+      <span>오늘의 숙제</span>
+      <ul>
+        <li>단어 1~20 외우기</li>
+        <li>워크북 p.12~15</li>
+        <li>오답노트 정리</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 
 <script>
+function updateNavbar() {
+  const navRight = document.getElementById("navRight");
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!navRight) {
+    return;
+  }
+
+  if (loginUser) {
+    navRight.innerHTML = `
+      <a href="yunsam.html">My Page</a>
+      <a href="#" onclick="logout()">Logout</a>
+    `;
+  } else {
+    navRight.innerHTML = `
+      <a href="login.html">Login</a>
+      <a href="yunsam.html">My Page</a>
+    `;
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem("loginUser");
+  alert("로그아웃되었습니다.");
+  location.href = "login.html";
+}
+
+updateNavbar();
+
   function loadNotices() {
   fetch("/notices")
     .then(response => response.json())
@@ -40,117 +150,89 @@
 loadNotices();
 </script>
 
-<!-- Header -->
-<header>
-  <a href="yunsam.html"> 
-    <img src="yunsam.jpeg" alt="img">
-  </a>
-</header>
-
-<!-- Navigation Bar -->
-<div class="navbar">
-  <a href="announce.html">공지사항</a>
-  <a href="test.html">단어</a>
-  <a href="daily.html">데일리 완성도</a>
-  <a href="hw.html">숙제</a>
-
-  <div class="nav-right">
-      <a href="login.html">Login</a>
-      <a href="yunsam.html">My Page</a>
-  </div>
-</div>
-
-<!-- Content Container -->
-<div class="container">
-  <div class="side">
-    <h3>공지사항</h3>
-    <div id="noticeBox">
-      공지사항을 불러오는 중입니다.
-    </div>
-
-    <h2>명예의 전당</h2>
-    <h5>26년도 윤팸이들</h5>
-    <div class="fakeimg" style="height:200px;"><Image></div>
-
-    <h5>25년도 윤팸이들</h5>
-    <div class="fakeimg" style="height:200px;">Image</div>
-    
-    <p>Some text about me in culpa qui officia deserunt mollit anim..</p>
-  </div>
-
-  <div class="main">
-    <h2 id="userName">로그인이 필요합니다</h2>
-    <hr>
-    <h3 class="strong">고2 주1회(윤T)</h3>
-
-    <div class="main-row">
-      <div class="vocatest">
-        <h2>단어시험 현황</h2>
-        <table border="1">
-          <tr>
-            <th>날짜</th>
-            <td>week1</td>
-            <td>week2</td>
-            <td>week3</td>
-            <td>week4</td>
-          </tr>
-          <tr>
-            <th>Day n-n</th>
-            <td id="week1 range">1-2</td>
-            <td id="week2 range">3-5</td>
-            <td id="week3 range">6-7</td>
-            <td id="week4 range">8-10</td>
-          <tr>
-            <th>결과</th>
-            <td id="week1 result">-1</td>
-            <td id="week2 result">-2</td>
-            <td id="week3 result">F</td>
-            <td id="week4 result">F</td>
-          </tr>
-        </table>
-      </div>
-
-      <div class="homework">
-        <span>오늘의 숙제</span>
-        <ul>
-          <li>단어 1~20 외우기</li>
-          <li>워크북 p.12~15</li>
-          <li>오답노트 정리</li>
-        </ul>
-      </div>
-    </div>
-
-    <br>
-    <h2>출결 현황</h2>
-    <table border="1">
-      <tr>
-        <th>날짜</th>
-        <td>1/1</td>
-        <td>1/2</td>
-        <td>1/3</td>
-        <td>1/4</td>
-      </tr>
-      <tr>
-        <th>출석</th>
-        <td id="week1 attendance">O</td>
-        <td id="week2 attendance">O</td>
-        <td id="week3 attendance">O</td>
-        <td id="week4 attendance">O</td>
-      </tr>
-    </table>
-  </div>
-</div>
-
 <script>
   const loginUser = sessionStorage.getItem("loginUser");
 
   if (loginUser) {
     const user = JSON.parse(loginUser);
+
     document.getElementById("userName").textContent =
       user.school + " " + user.name;
+
+    document.getElementById("userClass").textContent =
+      user.user_class;
+
+    loadMyRecords(user.user_id, user.user_class);
   } else {
     document.getElementById("userName").textContent =
       "로그인이 필요합니다";
+  }
+
+  function getWeeksByClass(className) {
+    const twiceAWeekClasses = ["고1 주2회", "고2 주2회", "중3"];
+
+    if (twiceAWeekClasses.includes(className)) {
+      return [
+        { key: "week1_1", label: "Week 1-1" },
+        { key: "week1_2", label: "Week 1-2" },
+        { key: "week2_1", label: "Week 2-1" },
+        { key: "week2_2", label: "Week 2-2" },
+        { key: "week3_1", label: "Week 3-1" },
+        { key: "week3_2", label: "Week 3-2" },
+        { key: "week4_1", label: "Week 4-1" },
+        { key: "week4_2", label: "Week 4-2" }
+      ];
+    }
+
+    return [
+      { key: "week1", label: "Week 1" },
+      { key: "week2", label: "Week 2" },
+      { key: "week3", label: "Week 3" },
+      { key: "week4", label: "Week 4" }
+    ];
+  }
+
+  function loadMyRecords(user_id, user_class) {
+    fetch("/my-records/" + encodeURIComponent(user_id))
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          showEmptyRecords("기록을 불러오지 못했습니다.");
+          return;
+        }
+
+        showMyRecords(user_class, data.records);
+      });
+  }
+
+  function showMyRecords(user_class, records) {
+    const weeks = getWeeksByClass(user_class);
+
+    const weekRow = document.getElementById("recordWeekRow");
+    const attendanceRow = document.getElementById("recordAttendanceRow");
+    const vocabRow = document.getElementById("recordVocabRow");
+
+    weekRow.innerHTML = "<th>날짜</th>";
+    attendanceRow.innerHTML = "<th>출결</th>";
+    vocabRow.innerHTML = "<th>단어시험</th>";
+
+    weeks.forEach(week => {
+      const record = records.find(r => r.week === week.key);
+
+      weekRow.innerHTML += `<td>${week.label}</td>`;
+      attendanceRow.innerHTML += `<td>${record ? record.attendance || "-" : "-"}</td>`;
+      vocabRow.innerHTML += `<td>${record ? record.vocab_result || "-" : "-"}</td>`;
+    });
+  }
+
+  function showEmptyRecords(message) {
+    const weekRow = document.getElementById("recordWeekRow");
+    const attendanceRow = document.getElementById("recordAttendanceRow");
+    const vocabRow = document.getElementById("recordVocabRow");
+
+    weekRow.innerHTML = "<th>날짜</th><td>" + message + "</td>";
+    attendanceRow.innerHTML = "<th>출결</th><td>-</td>";
+    vocabRow.innerHTML = "<th>단어시험</th><td>-</td>";
   }
 </script>
 

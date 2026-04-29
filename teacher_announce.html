@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>선생님 관리 페이지</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+<header>
+  <a href="yunsam.html">
+    <img src="yunsam.jpeg" alt="img">
+  </a>
+</header>
+
+<div class="navbar">
+  <a href="teacher.html">학생 인원 관리</a>
+  <a href="#">반 관리</a>
+  <a href="teacher_announce.html">공지사항 관리</a>
+  <a href="teacher_test.html">시험 관리</a>
+</div>
+
+
+
+<div class="container">
+  <div class="main">
+
+    <h2>공지사항 관리</h2>
+
+    <div class="notice-form">
+    <input type="text" id="noticeTitle" placeholder="공지 제목">
+    <br><br>
+    <textarea id="noticeContent" placeholder="공지 내용" rows="5" cols="50"></textarea>
+    <br><br>
+    <button onclick="addNotice()">공지사항 등록</button>
+    </div>
+
+    <h3>등록된 공지사항</h3>
+
+    <table border="1">
+    <thead>
+        <tr>
+        <th>번호</th>
+        <th>제목</th>
+        <th>내용</th>
+        <th>삭제</th>
+        </tr>
+    </thead>
+    <tbody id="noticeList"></tbody>
+    </table>
+    <script>
+    function loadNotices() {
+    fetch("/notices")
+        .then(response => response.json())
+        .then(data => {
+        const noticeList = document.getElementById("noticeList");
+        noticeList.innerHTML = "";
+
+        if (!data.success) {
+            alert(data.message);
+            return;
+        }
+
+        data.notices.forEach(notice => {
+            noticeList.innerHTML += `
+            <tr>
+                <td>${notice.id}</td>
+                <td>${notice.title}</td>
+                <td>${notice.content}</td>
+                <td>
+                <button onclick="deleteNotice(${notice.id})">삭제</button>
+                </td>
+            </tr>
+            `;
+        });
+        });
+    }
+
+    function addNotice() {
+    const title = document.getElementById("noticeTitle").value;
+    const content = document.getElementById("noticeContent").value;
+
+    fetch("/notices", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+        title: title,
+        content: content
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+        alert(data.message);
+
+        if (data.success) {
+            document.getElementById("noticeTitle").value = "";
+            document.getElementById("noticeContent").value = "";
+            loadNotices();
+        }
+        });
+    }
+
+    function deleteNotice(id) {
+    const ok = confirm("정말 이 공지사항을 삭제하시겠습니까?");
+
+    if (!ok) {
+        return;
+    }
+
+    fetch("/notices/" + id, {
+        method: "DELETE"
+    })
+        .then(response => response.json())
+        .then(data => {
+        alert(data.message);
+
+        if (data.success) {
+            loadNotices();
+        }
+        });
+    }
+    loadNotices();
+    </script>
+    </div>
+</div>
+</body>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>시험 및 출결 관리</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="main.css">
+  <style>
+    .test-wrap {
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    .class-select-box {
+      margin-bottom: 20px;
+    }
+
+    .class-select-box select,
+    .class-select-box button {
+      height: 36px;
+      padding: 5px 12px;
+      font-size: 15px;
+    }
+
+    .test-table {
+      border-collapse: collapse;
+      min-width: 900px;
+      width: 100%;
+      text-align: center;
+      background: white;
+    }
+
+    .test-table th,
+    .test-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      white-space: nowrap;
+    }
+
+    .test-table th {
+      background: #2c2c2c;
+    }
+
+    .student-name {
+      font-weight: bold;
+      text-align: left;
+      background: #fafafa;
+    }
+
+    .record-select {
+      width: 70px;
+      height: 28px;
+      border-radius: 15px;
+      border: none;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .empty {
+      background: #e5e7eb;
+    }
+
+    .pass {
+      background: #c8f0c8;
+      color: #146c2e;
+    }
+
+    .fail {
+      background: #b42318;
+      color: white;
+    }
+
+    .present {
+      background: #d8f0bf;
+      color: #146c2e;
+    }
+
+    .absent {
+      background: #ffc9c2;
+      color: #b42318;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="yunsam.html">
+    <img src="yunsam.jpeg" alt="img">
+  </a>
+</header>
+
+<div class="navbar">
+  <a href="teacher.html">학생 인원 관리</a>
+  <a href="#">반 관리</a>
+  <a href="teacher_announce.html">공지사항 관리</a>
+  <a href="teacher_test.html">시험 관리</a>
+</div>
+
+<div class="test-wrap">
+  <h2>시험 및 출결 관리</h2>
+
+  <div class="class-select-box">
+    <label>반 선택: </label>
+    <select id="classSelect">
+      <option value="">반을 선택하세요</option>
+      <option value="고3">고3</option>
+      <option value="고2 주2회">고2 주2회</option>
+      <option value="고2 주1회">고2 주1회</option>
+      <option value="고1 주2회">고1 주2회</option>
+      <option value="고1 주1회">고1 주1회</option>
+      <option value="중3">중3</option>
+    </select>
+    <button onclick="loadClassStudents()">불러오기</button>
+  </div>
+
+  <table class="test-table">
+    <thead id="testTableHead"></thead>
+    <tbody id="studentTableBody">
+      <tr>
+        <td>반을 선택하세요.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!loginUser) {
+    alert("로그인이 필요합니다.");
+    location.href = "login.html";
+  } else {
+    const user = JSON.parse(loginUser);
+
+    if (user.role !== "teacher") {
+      alert("관리자만 접근할 수 있습니다.");
+      location.href = "yunsam.html";
+    }
+  }
+
+  const twiceAWeekClasses = ["고1 주2회", "고2 주2회", "중3"];
+
+  function getWeeksByClass(className) {
+    if (twiceAWeekClasses.includes(className)) {
+      return [
+        { key: "week1_1", label: "Week 1-1", vocab: "Day 1-2" },
+        { key: "week1_2", label: "Week 1-2", vocab: "Day 3-4" },
+        { key: "week2_1", label: "Week 2-1", vocab: "Day 5-6" },
+        { key: "week2_2", label: "Week 2-2", vocab: "Day 7-8" },
+        { key: "week3_1", label: "Week 3-1", vocab: "Day 9-10" },
+        { key: "week3_2", label: "Week 3-2", vocab: "Day 11-12" },
+        { key: "week4_1", label: "Week 4-1", vocab: "Day 13-14" },
+        { key: "week4_2", label: "Week 4-2", vocab: "Day 15-16" }
+      ];
+    }
+
+    return [
+      { key: "week1", label: "Week 1", vocab: "Day 1-4" },
+      { key: "week2", label: "Week 2", vocab: "Day 5-8" },
+      { key: "week3", label: "Week 3", vocab: "Day 9-12" },
+      { key: "week4", label: "Week 4", vocab: "Day 13-16" }
+    ];
+  }
+
+  function loadClassStudents() {
+    const selectedClass = document.getElementById("classSelect").value;
+
+    if (selectedClass === "") {
+      alert("반을 선택하세요.");
+      return;
+    }
+
+  const weeks = getWeeksByClass(selectedClass);
+  renderTableHead(weeks);
+
+  fetch("/users?class=" + encodeURIComponent(selectedClass))
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) {
+        alert(data.message);
+        return;
+      }
+
+      renderTable(data.users, weeks);
+      loadSavedRecords(selectedClass);
+    });
+  }
+
+  function renderTable(users, weeks) {
+    const tbody = document.getElementById("studentTableBody");
+    tbody.innerHTML = "";
+
+    if (users.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="${1 + weeks.length * 2}">해당 반에 등록된 학생이 없습니다.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    users.forEach(user => {
+      let row = `
+        <tr>
+          <td class="student-name">${user.name}</td>
+      `;
+
+      weeks.forEach(week => {
+        row += `
+          <td>
+            <select 
+              class="record-select empty"
+              id="${user.user_id}_${week.key}_attendance"
+              onchange="saveRecord('${user.user_id}', '${week.key}')"
+            >
+              <option value="">-</option>
+              <option value="O">O</option>
+              <option value="X">X</option>
+            </select>
+          </td>
+
+          <td>
+            <select 
+              class="record-select empty"
+              id="${user.user_id}_${week.key}_vocab"
+              onchange="saveRecord('${user.user_id}', '${week.key}')"
+            >
+              <option value="">-</option>
+              <option value="O">O</option>
+              <option value="-1">-1</option>
+              <option value="-2">-2</option>
+              <option value="-3">-3</option>
+              <option value="-4">-4</option>
+              <option value="P">P</option>
+              <option value="F">F</option>
+            </select>
+          </td>
+        `;
+      });
+
+      row += `</tr>`;
+      tbody.innerHTML += row;
+    });
+  }
+
+  function saveRecord(user_id, week) {
+    const attendanceSelect = document.getElementById(user_id + "_" + week + "_attendance");
+    const vocabSelect = document.getElementById(user_id + "_" + week + "_vocab");
+
+    const attendance = attendanceSelect.value;
+    const vocab_result = vocabSelect.value;
+
+    changeSelectColor(attendanceSelect, "attendance");
+    changeSelectColor(vocabSelect, "vocab");
+
+    fetch("/records", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: user_id,
+        week: week,
+        attendance: attendance,
+        vocab_result: vocab_result
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          alert(data.message);
+        }
+      });
+  }
+
+  function loadSavedRecords(selectedClass) {
+    fetch("/records?class=" + encodeURIComponent(selectedClass))
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          alert(data.message);
+          return;
+        }
+
+        data.records.forEach(record => {
+          if (!record.week) {
+            return;
+          }
+
+          const attendanceSelect = document.getElementById(
+            record.user_id + "_" + record.week + "_attendance"
+          );
+
+          const vocabSelect = document.getElementById(
+            record.user_id + "_" + record.week + "_vocab"
+          );
+
+          if (attendanceSelect) {
+            attendanceSelect.value = record.attendance || "";
+            changeSelectColor(attendanceSelect, "attendance");
+          }
+
+          if (vocabSelect) {
+            vocabSelect.value = record.vocab_result || "";
+            changeSelectColor(vocabSelect, "vocab");
+          }
+        });
+      });
+  }
+
+  function changeSelectColor(select, type) {
+    select.classList.remove("empty", "present", "absent", "pass", "fail");
+
+    if (select.value === "") {
+      select.classList.add("empty");
+      return;
+    }
+
+    if (type === "attendance") {
+      if (select.value === "O") {
+        select.classList.add("present");
+      } else {
+        select.classList.add("absent");
+      }
+    }
+
+    if (type === "vocab") {
+      if (select.value === "P") {
+        select.classList.add("pass");
+      } else if (select.value === "F") {
+        select.classList.add("fail");
+      }
+    }
+  }
+
+  function renderTableHead(weeks) {
+  const thead = document.getElementById("testTableHead");
+
+  let firstRow = `
+    <tr>
+      <th rowspan="2">이름</th>
+  `;
+
+  weeks.forEach(week => {
+    firstRow += `<th colspan="2">${week.label}</th>`;
+  });
+
+  firstRow += `</tr>`;
+
+  let secondRow = `<tr>`;
+
+  weeks.forEach(week => {
+    secondRow += `
+      <th>출결</th>
+      <th>${week.vocab}</th>
+    `;
+  });
+
+  secondRow += `</tr>`;
+
+  thead.innerHTML = firstRow + secondRow;
+}
+</script>
+
+</body>
+</html>
