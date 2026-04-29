@@ -68,7 +68,12 @@
 
         if (data.success) {
           sessionStorage.setItem("loginUser", JSON.stringify(data.user));
-          location.href = "yunsam.html";
+
+          if (data.user.user_id === "teacher") {
+            location.href = "teacher.html";
+          } else {
+            location.href = "yunsam.html";
+          }
         }
       });
     }

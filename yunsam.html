@@ -8,6 +8,38 @@
 </head>
 <body>
 
+<script>
+  function loadNotices() {
+  fetch("/notices")
+    .then(response => response.json())
+    .then(data => {
+      const noticeBox = document.getElementById("noticeBox");
+      noticeBox.innerHTML = "";
+
+      if (!data.success) {
+        noticeBox.innerHTML = "공지사항을 불러오지 못했습니다.";
+        return;
+      }
+
+      if (data.notices.length === 0) {
+        noticeBox.innerHTML = "등록된 공지사항이 없습니다.";
+        return;
+      }
+
+      data.notices.forEach(notice => {
+        noticeBox.innerHTML += `
+          <div class="fakeimg" style="height:auto; padding:10px; margin-bottom:10px;">
+            <strong>${notice.title}</strong>
+            <p>${notice.content}</p>
+          </div>
+        `;
+      });
+    });
+}
+
+loadNotices();
+</script>
+
 <!-- Header -->
 <header>
   <a href="yunsam.html"> 
@@ -31,6 +63,11 @@
 <!-- Content Container -->
 <div class="container">
   <div class="side">
+    <h3>공지사항</h3>
+    <div id="noticeBox">
+      공지사항을 불러오는 중입니다.
+    </div>
+
     <h2>명예의 전당</h2>
     <h5>26년도 윤팸이들</h5>
     <div class="fakeimg" style="height:200px;"><Image></div>
@@ -39,11 +76,6 @@
     <div class="fakeimg" style="height:200px;">Image</div>
     
     <p>Some text about me in culpa qui officia deserunt mollit anim..</p>
-    <h3>More Text</h3>
-    <p>Lorem ipsum dolor sit ame.</p>
-    <div class="fakeimg" style="height:60px;">Image</div><br>
-    <div class="fakeimg" style="height:60px;">Image</div><br>
-    <div class="fakeimg" style="height:60px;">Image</div>
   </div>
 
   <div class="main">
@@ -64,16 +96,16 @@
           </tr>
           <tr>
             <th>Day n-n</th>
-            <td>1-2</td>
-            <td>3-5</td>
-            <td>6-7</td>
-            <td>8-10</td>
+            <td id="week1 range">1-2</td>
+            <td id="week2 range">3-5</td>
+            <td id="week3 range">6-7</td>
+            <td id="week4 range">8-10</td>
           <tr>
             <th>결과</th>
-            <td>-1</td>
-            <td>-2</td>
-            <td>F</td>
-            <td>F</td>
+            <td id="week1 result">-1</td>
+            <td id="week2 result">-2</td>
+            <td id="week3 result">F</td>
+            <td id="week4 result">F</td>
           </tr>
         </table>
       </div>
@@ -100,10 +132,10 @@
       </tr>
       <tr>
         <th>출석</th>
-        <td>O</td>
-        <td>O</td>
-        <td>O</td>
-        <td>O</td>
+        <td id="week1 attendance">O</td>
+        <td id="week2 attendance">O</td>
+        <td id="week3 attendance">O</td>
+        <td id="week4 attendance">O</td>
       </tr>
     </table>
   </div>
