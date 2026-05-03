@@ -5,6 +5,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="main.css">
+<style>
+.slider {
+  position: relative;
+  width: 80%;
+  max-width: 900px;
+  margin: 30px auto;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  width: 100%;
+  opacity: 0.8;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.slide.active {
+  opacity: 1;
+  position: relative;
+}
+
+/* 버튼 */
+.prev, .next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.prev { left: 10px; }
+.next { right: 10px; }
+
+.prev:hover, .next:hover {
+  background-color: rgba(0,0,0,0.8);
+}
+</style>
 </head>
 <body>
 
@@ -17,15 +58,24 @@
 
 <!-- Navigation Bar -->
 <div class="navbar">
-  <a href="announce.html">공지사항</a>
+  <a href="announce.html">명예의 전당</a>
   <a href="test.html">단어</a>
   <a href="daily.html">데일리 완성도</a>
   <a href="hw.html">숙제</a>
 
-  <div class="nav-right">
+  <div class="nav-right" id="navRight">
       <a href="login.html">Login</a>
       <a href="yunsam.html">My Page</a>
   </div>
+</div>
+
+<div class="slider">
+  <img src="26년 합격자 명단.png" class="slide active">
+  <img src="25년 합격자 명단.png" class="slide">
+  <img src="합격자 수기.png" class="slide">
+
+  <button class="prev">&#10094;</button>
+  <button class="next">&#10095;</button>
 </div>
 
 <!-- Footer -->
@@ -36,6 +86,77 @@
 </footer>
 
 </body>
+
+<script>
+  function updateNavbar() {
+    const navRight = document.getElementById("navRight");
+    const loginUser = sessionStorage.getItem("loginUser");
+
+    if (!navRight) {
+      return;
+    }
+
+    if (loginUser) {
+      navRight.innerHTML = `
+        <a href="yunsam.html">My Page</a>
+        <a href="#" onclick="logout()">Logout</a>
+      `;
+    } else {
+      navRight.innerHTML = `
+        <a href="login.html">Login</a>
+        <a href="yunsam.html">My Page</a>
+      `;
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem("loginUser");
+    alert("로그아웃되었습니다.");
+    location.href = "login.html";
+  }
+
+  updateNavbar();
+  const slides = document.querySelectorAll(".slide");
+  let index = 0;
+  let interval;
+
+  function showSlide(i) {
+    slides.forEach(s => s.classList.remove("active"));
+    slides[i].classList.add("active");
+  }
+
+  function nextSlide() {
+    index = (index + 1) % slides.length;
+    showSlide(index);
+  }
+
+  function prevSlide() {
+    index = (index - 1 + slides.length) % slides.length;
+    showSlide(index);
+  }
+
+  document.querySelector(".next").addEventListener("click", () => {
+    nextSlide();
+  });
+
+  document.querySelector(".prev").addEventListener("click", () => {
+    prevSlide();
+  });
+
+  function startAuto() {
+    interval = setInterval(nextSlide, 3000);
+  }
+
+  function stopAuto() {
+    clearInterval(interval);
+  }
+
+  const slider = document.querySelector(".slider");
+  slider.addEventListener("mouseenter", stopAuto);
+  slider.addEventListener("mouseleave", startAuto);
+
+  startAuto();
+</script>
 </html>
 
 

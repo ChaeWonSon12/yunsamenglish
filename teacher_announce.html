@@ -4,28 +4,56 @@
   <title>선생님 관리 페이지</title>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="main.css">
+  <style>
+  .class-label {
+    display: inline-block;
+    margin-right: 25px;
+    margin-bottom: 15px;
+    font-size: 18px;
+  }
+
+  .class-label input {
+    margin-left: 8px;
+  }
+  </style>
 </head>
 <body>
 
 <header>
-  <a href="yunsam.html">
-    <img src="yunsam.jpeg" alt="img">
-  </a>
+  <img src="yunsam.jpeg" alt="img">
 </header>
 
 <div class="navbar">
   <a href="teacher.html">학생 인원 관리</a>
-  <a href="#">반 관리</a>
+  <a href="teacher_hw.html">숙제 관리</a>
   <a href="teacher_announce.html">공지사항 관리</a>
   <a href="teacher_test.html">시험 관리</a>
 </div>
 
-
-
 <div class="container">
   <div class="main">
-
     <h2>공지사항 관리</h2>
+    <label class="class-label">전체 공지
+        <input type="checkbox" name="whichClass" value="all">
+    </label>
+    <label class="class-label">|고3
+        <input type="checkbox" name="whichClass" value="고3">
+    </label>
+    <label class="class-label">|고2-2
+        <input type="checkbox" name="whichClass" value="고2 주2회">
+    </label>
+    <label class="class-label">고2-1
+        <input type="checkbox" name="whichClass" value="고2 주1회">
+    </label>
+    <label class="class-label">|고1-2
+        <input type="checkbox" name="whichClass" value="고1 주2회">
+    </label>
+    <label class="class-label">고1-1
+        <input type="checkbox" name="whichClass" value="고1 주1회">
+    </label>
+    <label class="class-label">|중3
+        <input type="checkbox" name="whichClass" value="중3">
+    </label>
 
     <div class="notice-form">
     <input type="text" id="noticeTitle" placeholder="공지 제목">
@@ -41,6 +69,7 @@
     <thead>
         <tr>
         <th>번호</th>
+        <th>반</th>
         <th>제목</th>
         <th>내용</th>
         <th>삭제</th>
@@ -48,81 +77,127 @@
     </thead>
     <tbody id="noticeList"></tbody>
     </table>
-    <script>
-    function loadNotices() {
+    </div>
+</div>
+<script>
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!loginUser) {
+    alert("로그인이 필요합니다.");
+    location.href = "login.html";
+  } else {
+    const user = JSON.parse(loginUser);
+
+    if (user.role !== "teacher") {
+      alert("관리자만 접근할 수 있습니다.");
+      location.href = "yunsam.html";
+    }
+  }
+
+  function loadNotices() {
     fetch("/notices")
-        .then(response => response.json())
-        .then(data => {
+      .then(response => response.json())
+      .then(data => {
         const noticeList = document.getElementById("noticeList");
         noticeList.innerHTML = "";
 
         if (!data.success) {
-            alert(data.message);
-            return;
+          alert(data.message);
+          return;
         }
 
         data.notices.forEach(notice => {
-            noticeList.innerHTML += `
+          noticeList.innerHTML += `
             <tr>
-                <td>${notice.id}</td>
-                <td>${notice.title}</td>
-                <td>${notice.content}</td>
-                <td>
+              <td>${notice.id}</td>
+              <td>${notice.target_class === "all" ? "전체" : notice.target_class}</td>
+              <td>${notice.title}</td>
+              <td>${notice.content}</td>
+              <td>
                 <button onclick="deleteNotice(${notice.id})">삭제</button>
-                </td>
+              </td>
             </tr>
-            `;
+          `;
         });
-        });
-    }
+      });
+  }
 
-    function addNotice() {
+  function addNotice() {
     const title = document.getElementById("noticeTitle").value;
     const content = document.getElementById("noticeContent").value;
 
+    const checkedClasses = document.querySelectorAll(
+      'input[name="whichClass"]:checked'
+    );
+
+    let target_classes = [];
+
+    checkedClasses.forEach(item => {
+      target_classes.push(item.value);
+    });
+
+    if (target_classes.includes("all")) {
+      target_classes = ["all"];
+    }
+
+    if (title === "" || content === "") {
+      alert("제목과 내용을 모두 입력하세요.");
+      return;
+    }
+
+    if (target_classes.length === 0) {
+      alert("공지할 반을 선택하세요.");
+      return;
+    }
+
     fetch("/notices", {
-        method: "POST",
-        headers: {
+      method: "POST",
+      headers: {
         "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
+      },
+      body: JSON.stringify({
         title: title,
-        content: content
-        })
+        content: content,
+        target_classes: target_classes
+      })
     })
-        .then(response => response.json())
-        .then(data => {
+      .then(response => response.json())
+      .then(data => {
         alert(data.message);
 
         if (data.success) {
-            document.getElementById("noticeTitle").value = "";
-            document.getElementById("noticeContent").value = "";
-            loadNotices();
-        }
-        });
-    }
+          document.getElementById("noticeTitle").value = "";
+          document.getElementById("noticeContent").value = "";
 
-    function deleteNotice(id) {
+          checkedClasses.forEach(item => {
+            item.checked = false;
+          });
+
+          loadNotices();
+        }
+      });
+  }
+
+  function deleteNotice(id) {
     const ok = confirm("정말 이 공지사항을 삭제하시겠습니까?");
 
     if (!ok) {
-        return;
+      return;
     }
 
     fetch("/notices/" + id, {
-        method: "DELETE"
+      method: "DELETE"
     })
-        .then(response => response.json())
-        .then(data => {
+      .then(response => response.json())
+      .then(data => {
         alert(data.message);
 
         if (data.success) {
-            loadNotices();
+          loadNotices();
         }
-        });
-    }
-    loadNotices();
-    </script>
-    </div>
-</div>
+      });
+  }
+
+  loadNotices();
+</script>
 </body>

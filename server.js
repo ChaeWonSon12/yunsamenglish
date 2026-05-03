@@ -24,9 +24,17 @@ db.run(`
     name TEXT,
     user_id TEXT UNIQUE,
     password TEXT,
-    user_class TEXT
+    user_class TEXT,
+    status TEXT DEFAULT 'pending'
   )
 `);
+
+db.run(`
+  UPDATE users
+  SET status = 'approved'
+  WHERE status IS NULL OR user_id = '0000'
+`);
+
 
 // students 테이블 만들기
 db.run(`
@@ -47,6 +55,7 @@ db.run(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
+    target_class TEXT NOT NULL DEFAULT 'all',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
@@ -55,12 +64,38 @@ db.run(`
 db.run(`
   CREATE TABLE IF NOT EXISTS test_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_month TEXT NOT NULL,
     user_id TEXT NOT NULL,
     week TEXT NOT NULL,
     attendance TEXT,
     vocab_result TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, week)
+    UNIQUE(record_month, user_id, week)
+  )
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS test_ranges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_month TEXT NOT NULL,
+    user_class TEXT NOT NULL,
+    week TEXT NOT NULL,
+    vocab_range TEXT NOT NULL,
+    UNIQUE(record_month, user_class, week)
+  )
+`);
+
+//숙제 테이블
+db.run(`
+  CREATE TABLE IF NOT EXISTS homeworks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    target_class TEXT NOT NULL,
+    due_date TEXT,
+    file_name TEXT,
+    file_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 
@@ -69,21 +104,21 @@ app.post("/signup", (req, res) => {
   const { school, name, user_id, password, user_class } = req.body;
 
   const sql = `
-    INSERT INTO users (school, name, user_class , user_id, password)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO users (school, name, user_class, user_id, password, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
   `;
 
   db.run(sql, [school, name, user_class, user_id, password], function (err) {
     if (err) {
       return res.json({
         success: false,
-        message: "이미 존재하는 아이디입니다."
+        message: "이미 존재하는 출석코드입니다."
       });
     }
 
     res.json({
       success: true,
-      message: "회원가입 성공"
+      message: "회원가입 신청 완료. 선생님 승인 후 로그인할 수 있습니다."
     });
   });
 });
@@ -112,6 +147,13 @@ app.post("/login", (req, res) => {
       });
     }
 
+    if (user.user_id  !== "0000" && user.status !== "approved") {
+      return res.json({
+        success: false,
+        message: "아직 선생님 승인이 완료되지 않았습니다."
+      });
+    }
+
     res.json({
       success: true,
       message: "로그인 성공",
@@ -120,7 +162,7 @@ app.post("/login", (req, res) => {
         name: user.name,
         user_class: user.user_class,
         user_id: user.user_id,
-        role: user.user_id === "teacher" ? "teacher" : "student"
+        role: user.user_id === "0000" ? "teacher" : "student"
       }
     });
   });
@@ -200,19 +242,24 @@ app.delete("/students/:id", (req, res) => {
 // 회원가입한 유저 목록 불러오기 - 선생님용
 app.get("/users", (req, res) => {
   const userClass = req.query.class;
+  const status = req.query.status;
 
   let sql = `
-    SELECT id, school, name, user_class, user_id
+    SELECT id, school, name, user_class, user_id, status
     FROM users
+    WHERE user_id != '0000'
   `;
 
   const params = [];
 
   if (userClass) {
-    sql += `
-      WHERE user_class = ?
-    `;
+    sql += ` AND user_class = ? `;
     params.push(userClass);
+  }
+
+  if (status) {
+    sql += ` AND status = ? `;
+    params.push(status);
   }
 
   sql += `
@@ -265,15 +312,31 @@ app.delete("/users/:id", (req, res) => {
   });
 });
 
+
 // 공지사항 목록 불러오기
 app.get("/notices", (req, res) => {
-  const sql = `
-    SELECT *
-    FROM notices
-    ORDER BY id DESC
-  `;
+  const userClass = req.query.class;
 
-  db.all(sql, [], (err, rows) => {
+  let sql;
+  let params = [];
+
+  if (userClass) {
+    sql = `
+      SELECT *
+      FROM notices
+      WHERE target_class = 'all' OR target_class = ?
+      ORDER BY id DESC
+    `;
+    params = [userClass];
+  } else {
+    sql = `
+      SELECT *
+      FROM notices
+      ORDER BY id DESC
+    `;
+  }
+
+  db.all(sql, params, (err, rows) => {
     if (err) {
       return res.json({
         success: false,
@@ -290,7 +353,7 @@ app.get("/notices", (req, res) => {
 
 // 공지사항 추가 - 선생님용
 app.post("/notices", (req, res) => {
-  const { title, content } = req.body;
+  const { title, content, target_classes } = req.body;
 
   if (!title || !content) {
     return res.json({
@@ -299,23 +362,42 @@ app.post("/notices", (req, res) => {
     });
   }
 
+  if (!target_classes || target_classes.length === 0) {
+    return res.json({
+      success: false,
+      message: "공지할 반을 선택하세요."
+    });
+  }
+
   const sql = `
-    INSERT INTO notices (title, content)
-    VALUES (?, ?)
+    INSERT INTO notices (title, content, target_class)
+    VALUES (?, ?, ?)
   `;
 
-  db.run(sql, [title, content], function (err) {
-    if (err) {
-      return res.json({
-        success: false,
-        message: "공지사항 등록 실패"
-      });
-    }
+  let completed = 0;
+  let hasError = false;
 
-    res.json({
-      success: true,
-      message: "공지사항 등록 성공",
-      id: this.lastID
+  target_classes.forEach(targetClass => {
+    db.run(sql, [title, content, targetClass], function (err) {
+      completed++;
+
+      if (err) {
+        hasError = true;
+      }
+
+      if (completed === target_classes.length) {
+        if (hasError) {
+          return res.json({
+            success: false,
+            message: "공지사항 등록 실패"
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "공지사항 등록 성공"
+        });
+      }
     });
   });
 });
@@ -363,8 +445,8 @@ app.post("/users", (req, res) => {
   }
 
   const sql = `
-    INSERT INTO users (school, name, user_class, user_id, password)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO users (school, name, user_class, user_id, password, status)
+    VALUES (?, ?, ?, ?, ?, 'approved')
   `;
 
   db.run(sql, [school, name, user_class, user_id, password], function (err) {
@@ -386,11 +468,12 @@ app.post("/users", (req, res) => {
 // 시험 및 출결 기록 불러오기
 app.get("/records", (req, res) => {
   const userClass = req.query.class;
+  const recordMonth = req.query.month;
 
-  if (!userClass) {
+  if (!userClass || !recordMonth) {
     return res.json({
       success: false,
-      message: "반을 선택하세요."
+      message: "반과 월을 선택하세요."
     });
   }
 
@@ -406,11 +489,12 @@ app.get("/records", (req, res) => {
     FROM users u
     LEFT JOIN test_records r
       ON u.user_id = r.user_id
+      AND r.record_month = ?
     WHERE u.user_class = ?
     ORDER BY u.name ASC
   `;
 
-  db.all(sql, [userClass], (err, rows) => {
+  db.all(sql, [recordMonth, userClass], (err, rows) => {
     if (err) {
       return res.json({
         success: false,
@@ -427,25 +511,25 @@ app.get("/records", (req, res) => {
 
 // 시험 및 출결 기록 저장
 app.post("/records", (req, res) => {
-  const { user_id, week, attendance, vocab_result } = req.body;
+  const { record_month, user_id, week, attendance, vocab_result } = req.body;
 
-  if (!user_id || !week) {
+  if (!record_month || !user_id || !week) {
     return res.json({
       success: false,
-      message: "학생과 주차 정보가 필요합니다."
+      message: "month, 학생과 주차 정보가 필요합니다."
     });
   }
 
   const sql = `
-    INSERT INTO test_records (user_id, week, attendance, vocab_result)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(user_id, week)
+    INSERT INTO test_records (record_month, user_id, week, attendance, vocab_result)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(record_month, user_id, week)
     DO UPDATE SET
       attendance = excluded.attendance,
       vocab_result = excluded.vocab_result
   `;
 
-  db.run(sql, [user_id, week, attendance, vocab_result], function (err) {
+  db.run(sql, [record_month, user_id, week, attendance, vocab_result], function (err) {
     if (err) {
       return res.json({
         success: false,
@@ -463,15 +547,24 @@ app.post("/records", (req, res) => {
 // 학생 본인 기록 불러오기
 app.get("/my-records/:user_id", (req, res) => {
   const user_id = req.params.user_id;
+  const recordMonth = req.query.month;
+
+  if (!recordMonth) {
+    return res.json({
+      success: false,
+      message: "월 정보가 필요합니다."
+    });
+  }
 
   const sql = `
     SELECT week, attendance, vocab_result
     FROM test_records
     WHERE user_id = ?
+      AND record_month = ?
     ORDER BY week ASC
   `;
 
-  db.all(sql, [user_id], (err, rows) => {
+  db.all(sql, [user_id, recordMonth], (err, rows) => {
     if (err) {
       return res.json({
         success: false,
@@ -482,6 +575,269 @@ app.get("/my-records/:user_id", (req, res) => {
     res.json({
       success: true,
       records: rows
+    });
+  });
+});
+
+app.patch("/users/:id/approve", (req, res) => {
+  const id = req.params.id;
+
+  const sql = `
+    UPDATE users
+    SET status = 'approved'
+    WHERE id = ?
+  `;
+
+  db.run(sql, [id], function (err) {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "승인 실패"
+      });
+    }
+
+    if (this.changes === 0) {
+      return res.json({
+        success: false,
+        message: "해당 회원을 찾을 수 없습니다."
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "회원 승인 완료"
+    });
+  });
+});
+
+app.patch("/change-password", (req, res) => {
+  const { user_id, current_password, new_password } = req.body;
+
+  if (!user_id || !current_password || !new_password) {
+    return res.json({
+      success: false,
+      message: "필수 정보가 부족합니다."
+    });
+  }
+
+  const checkSql = `
+    SELECT * FROM users
+    WHERE user_id = ? AND password = ?
+  `;
+
+  db.get(checkSql, [user_id, current_password], (err, user) => {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "서버 오류"
+      });
+    }
+
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "현재 비밀번호가 틀렸습니다."
+      });
+    }
+
+    const updateSql = `
+      UPDATE users
+      SET password = ?
+      WHERE user_id = ?
+    `;
+
+    db.run(updateSql, [new_password, user_id], function (err) {
+      if (err) {
+        return res.json({
+          success: false,
+          message: "비밀번호 변경 실패"
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "비밀번호가 변경되었습니다. 다시 로그인해주세요."
+      });
+    });
+  });
+});
+
+app.get("/homeworks", (req, res) => {
+  const userClass = req.query.class;
+
+  let sql;
+  let params = [];
+
+  if (userClass) {
+    sql = `
+      SELECT *
+      FROM homeworks
+      WHERE target_class = 'all' OR target_class = ?
+      ORDER BY id DESC
+    `;
+    params = [userClass];
+  } else {
+    sql = `
+      SELECT *
+      FROM homeworks
+      ORDER BY id DESC
+    `;
+  }
+
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "숙제 불러오기 실패"
+      });
+    }
+
+    res.json({
+      success: true,
+      homeworks: rows
+    });
+  });
+});
+
+app.post("/homeworks", (req, res) => {
+  const { title, content, target_classes } = req.body;
+
+  if (!title || !content) {
+    return res.json({
+      success: false,
+      message: "숙제 제목과 내용을 입력하세요."
+    });
+  }
+
+  if (!target_classes || target_classes.length === 0) {
+    return res.json({
+      success: false,
+      message: "반을 선택하세요."
+    });
+  }
+
+  const sql = `
+    INSERT INTO homeworks (title, content, target_class)
+    VALUES (?, ?, ?)
+  `;
+
+  let completed = 0;
+  let hasError = false;
+
+  target_classes.forEach(targetClass => {
+    db.run(
+      sql,
+      [title, content, targetClass],
+      function (err) {
+        completed++;
+
+        if (err) {
+          hasError = true;
+        }
+
+        if (completed === target_classes.length) {
+          if (hasError) {
+            return res.json({
+              success: false,
+              message: "숙제 등록 실패"
+            });
+          }
+
+          res.json({
+            success: true,
+            message: "숙제 등록 성공"
+          });
+        }
+      }
+    );
+  });
+});
+
+app.delete("/homeworks/:id", (req, res) => {
+  const id = req.params.id;
+
+  const sql = `
+    DELETE FROM homeworks
+    WHERE id = ?
+  `;
+
+  db.run(sql, [id], function (err) {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "숙제 삭제 실패"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "숙제 삭제 성공"
+    });
+  });
+});
+
+app.get("/test-ranges", (req, res) => {
+  const userClass = req.query.class;
+  const recordMonth = req.query.month;
+
+  if (!userClass || !recordMonth) {
+    return res.json({
+      success: false,
+      message: "반과 월 정보가 필요합니다."
+    });
+  }
+
+  const sql = `
+    SELECT week, vocab_range
+    FROM test_ranges
+    WHERE user_class = ?
+      AND record_month = ?
+  `;
+
+  db.all(sql, [userClass, recordMonth], (err, rows) => {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "단어 범위 불러오기 실패"
+      });
+    }
+
+    res.json({
+      success: true,
+      ranges: rows
+    });
+  });
+});
+
+app.post("/test-ranges", (req, res) => {
+  const { record_month, user_class, week, vocab_range } = req.body;
+
+  if (!record_month || !user_class || !week || !vocab_range) {
+    return res.json({
+      success: false,
+      message: "필수 정보가 부족합니다."
+    });
+  }
+
+  const sql = `
+    INSERT INTO test_ranges (record_month, user_class, week, vocab_range)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(record_month, user_class, week)
+    DO UPDATE SET
+      vocab_range = excluded.vocab_range
+  `;
+
+  db.run(sql, [record_month, user_class, week, vocab_range], function (err) {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "단어 범위 저장 실패"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "단어 범위 저장 완료"
     });
   });
 });

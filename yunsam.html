@@ -5,6 +5,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="main.css">
+<style>
+  .side {
+    display: flex;
+    flex-direction: column;
+  }
+  .bottom-links {
+    margin-top: auto;
+  }
+</style>
 </head>
 <body>
 <!-- Header -->
@@ -16,7 +25,7 @@
 
 <!-- Navigation Bar -->
 <div class="navbar">
-  <a href="announce.html">공지사항</a>
+  <a href="announce.html">명예의 전당</a>
   <a href="test.html">단어</a>
   <a href="daily.html">데일리 완성도</a>
   <a href="hw.html">숙제</a>
@@ -34,15 +43,11 @@
     <div id="noticeBox">
       공지사항을 불러오는 중입니다.
     </div>
-
-    <h2>명예의 전당</h2>
-    <h5>26년도 윤팸이들</h5>
-    <div class="fakeimg" style="height:200px;"><Image></div>
-
-    <h5>25년도 윤팸이들</h5>
-    <div class="fakeimg" style="height:200px;">Image</div>
-    
-    <p>Some text about me in culpa qui officia deserunt mollit anim..</p>
+    <div class="bottom-links">
+      <p><a href="https://cloudlearning.atedu.co.kr/" target="_blank" style="color: black;"><b>이서당 바로가기</b></a></p>
+      <p><a href="https://blog.naver.com/PostList.naver?blogId=yunsam_english_gimpo&from=postList&categoryNo=1" target="_blank" style="color: black;"><b>윤쌤영어 블로그 바로가기</b></a></p>
+      <p><a href="#" target="_blank" style="color: black;"><b>결석계 제출 바로가기</b></a></p>
+    </div>
   </div>
 
   <div class="main">
@@ -59,6 +64,13 @@
         <td>-</td>
         <td>-</td>
         <td>-</td>  
+      </tr>
+      <tr id="recordRangeRow">
+        <th>범위</th>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
       </tr>
       <tr id="recordAttendanceRow">
         <th>출결</th>
@@ -77,16 +89,27 @@
     </tbody>
   </table>
 
-    <div class="homework">
-      <span>오늘의 숙제</span>
-      <ul>
-        <li>단어 1~20 외우기</li>
-        <li>워크북 p.12~15</li>
-        <li>오답노트 정리</li>
-      </ul>
-    </div>
-  </div>
+<div class="homework">
+  <h2>나의 숙제</h2>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>반</th>
+        <th>날짜</th>
+        <th>내용</th>
+      </tr>
+    </thead>
+    <tbody id="myHomeworkList">
+      <tr>
+        <td colspan="3">-</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
+</div>
+</div>
+
 
 
 <script>
@@ -119,35 +142,38 @@ function logout() {
 
 updateNavbar();
 
-  function loadNotices() {
-  fetch("/notices")
-    .then(response => response.json())
-    .then(data => {
-      const noticeBox = document.getElementById("noticeBox");
-      noticeBox.innerHTML = "";
+  function loadNotices(userClass) {
+    fetch("/notices?class=" + encodeURIComponent(userClass))
+      .then(response => response.json())
+      .then(data => {
+        const noticeBox = document.getElementById("noticeBox");
+        noticeBox.innerHTML = "";
 
-      if (!data.success) {
-        noticeBox.innerHTML = "공지사항을 불러오지 못했습니다.";
-        return;
-      }
+        if (!data.success) {
+          noticeBox.innerHTML = "공지사항을 불러오지 못했습니다.";
+          return;
+        }
 
-      if (data.notices.length === 0) {
-        noticeBox.innerHTML = "등록된 공지사항이 없습니다.";
-        return;
-      }
+        if (data.notices.length === 0) {
+          noticeBox.innerHTML = "등록된 공지사항이 없습니다.";
+          return;
+        }
 
-      data.notices.forEach(notice => {
-        noticeBox.innerHTML += `
-          <div class="fakeimg" style="height:auto; padding:10px; margin-bottom:10px;">
-            <strong>${notice.title}</strong>
-            <p>${notice.content}</p>
-          </div>
-        `;
+        noticeBox.innerHTML = `<ul class="notice-list"></ul>`;
+
+        const noticeList = noticeBox.querySelector(".notice-list");
+
+        data.notices.forEach(notice => {
+          noticeList.innerHTML += `
+            <li>
+              <strong>${notice.title}</strong>
+              <span>${notice.content}</span>
+            </li>
+          `;
+        });
       });
-    });
-}
+  }
 
-loadNotices();
 </script>
 
 <script>
@@ -161,8 +187,12 @@ loadNotices();
 
     document.getElementById("userClass").textContent =
       user.user_class;
+    
+    const currentMonth = new Date().toISOString().slice(0, 7);
 
-    loadMyRecords(user.user_id, user.user_class);
+    loadMyHomeworks(user.user_class);
+    loadNotices(user.user_class);
+    loadMyRecords(user.user_id, user.user_class, currentMonth);
   } else {
     document.getElementById("userName").textContent =
       "로그인이 필요합니다";
@@ -192,34 +222,48 @@ loadNotices();
     ];
   }
 
-  function loadMyRecords(user_id, user_class) {
-    fetch("/my-records/" + encodeURIComponent(user_id))
-      .then(response => response.json())
-      .then(data => {
-        if (!data.success) {
+  function loadMyRecords(user_id, user_class, recordMonth) {
+    Promise.all([
+      fetch(
+        "/my-records/" + encodeURIComponent(user_id) +
+        "?month=" + encodeURIComponent(recordMonth)
+      ).then(response => response.json()),
+
+      fetch(
+        "/test-ranges?class=" + encodeURIComponent(user_class) +
+        "&month=" + encodeURIComponent(recordMonth)
+      ).then(response => response.json())
+    ])
+      .then(([recordData, rangeData]) => {
+        if (!recordData.success) {
           showEmptyRecords("기록을 불러오지 못했습니다.");
           return;
         }
 
-        showMyRecords(user_class, data.records);
+        const ranges = rangeData.success ? rangeData.ranges : [];
+        showMyRecords(user_class, recordData.records, ranges);
       });
   }
 
-  function showMyRecords(user_class, records) {
+  function showMyRecords(user_class, records, ranges) {
     const weeks = getWeeksByClass(user_class);
 
     const weekRow = document.getElementById("recordWeekRow");
+    const rangeRow = document.getElementById("recordRangeRow");
     const attendanceRow = document.getElementById("recordAttendanceRow");
     const vocabRow = document.getElementById("recordVocabRow");
 
     weekRow.innerHTML = "<th>날짜</th>";
+    rangeRow.innerHTML = "<th>범위</th>";
     attendanceRow.innerHTML = "<th>출결</th>";
     vocabRow.innerHTML = "<th>단어시험</th>";
 
     weeks.forEach(week => {
       const record = records.find(r => r.week === week.key);
+      const range = ranges.find(r => r.week === week.key);
 
       weekRow.innerHTML += `<td>${week.label}</td>`;
+      rangeRow.innerHTML += `<td>${range ? range.vocab_range : "-"}</td>`;
       attendanceRow.innerHTML += `<td>${record ? record.attendance || "-" : "-"}</td>`;
       vocabRow.innerHTML += `<td>${record ? record.vocab_result || "-" : "-"}</td>`;
     });
@@ -227,13 +271,51 @@ loadNotices();
 
   function showEmptyRecords(message) {
     const weekRow = document.getElementById("recordWeekRow");
+    const rangeRow = document.getElementById("recordRangeRow");
     const attendanceRow = document.getElementById("recordAttendanceRow");
     const vocabRow = document.getElementById("recordVocabRow");
 
     weekRow.innerHTML = "<th>날짜</th><td>" + message + "</td>";
+    rangeRow.innerHTML = "<th>범위</th><td>-</td>";
     attendanceRow.innerHTML = "<th>출결</th><td>-</td>";
     vocabRow.innerHTML = "<th>단어시험</th><td>-</td>";
   }
+
+function loadMyHomeworks(userClass) {
+  fetch("/homeworks?class=" + encodeURIComponent(userClass))
+    .then(response => response.json())
+    .then(data => {
+      const list = document.getElementById("myHomeworkList");
+      list.innerHTML = "";
+
+      if (!data.success) {
+        list.innerHTML = `
+          <tr>
+            <td colspan="3">숙제를 불러오지 못했습니다.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      if (data.homeworks.length === 0) {
+        list.innerHTML = `
+          <tr>
+            <td colspan="3">등록된 숙제가 없습니다.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      const hw = data.homeworks[0];
+      list.innerHTML += `
+        <tr>
+          <td>${hw.target_class === "all" ? "전체" : hw.target_class}</td>
+          <td>${hw.title}</td>
+          <td class ="homework-content">${hw.content}</td>
+        </tr>
+      `;
+    });
+}
 </script>
 
 <!-- Footer -->

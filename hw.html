@@ -5,6 +5,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="main.css">
+<style>
+  .download-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  color: black;
+  content: "📄";
+  font-size: 22px;
+}
+
+</style>
 </head>
 <body>
 
@@ -17,16 +27,119 @@
 
 <!-- Navigation Bar -->
 <div class="navbar">
-  <a href="announce.html">공지사항</a>
+  <a href="announce.html">명예의 전당</a>
   <a href="test.html">단어</a>
   <a href="daily.html">데일리 완성도</a>
   <a href="hw.html">숙제</a>
 
-  <div class="nav-right">
+  <div class="nav-right" id="navRight">
       <a href="login.html">Login</a>
       <a href="yunsam.html">My Page</a>
   </div>
 </div>
+
+<div class="container">
+  <div class="main">
+    <h2>나의 숙제</h2>
+
+    <table border="1">
+      <thead>
+        <tr>
+          <th>반</th>
+          <th>제목</th>
+          <th>내용</th>
+        </tr>
+      </thead>
+      <tbody id="myHomeworkList">
+        <tr>
+          <td colspan="3">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+
+  function updateNavbar() {
+    const navRight = document.getElementById("navRight");
+    const loginUser = sessionStorage.getItem("loginUser");
+
+    if (!navRight) {
+      return;
+    }
+
+    if (loginUser) {
+      navRight.innerHTML = `
+        <a href="yunsam.html">My Page</a>
+        <a href="#" onclick="logout()">Logout</a>
+      `;
+    } else {
+      navRight.innerHTML = `
+        <a href="login.html">Login</a>
+        <a href="yunsam.html">My Page</a>
+      `;
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem("loginUser");
+    alert("로그아웃되었습니다.");
+    location.href = "login.html";
+  }
+
+  updateNavbar();
+
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!loginUser) {
+    document.getElementById("myHomeworkList").innerHTML = `
+      <tr>
+        <td colspan="5">로그인 후 숙제를 확인할 수 있습니다.</td>
+      </tr>
+    `;
+  } else {
+    const user = JSON.parse(loginUser);
+    loadMyHomeworks(user.user_class);
+  }
+
+  function loadMyHomeworks(userClass) {
+    fetch("/homeworks?class=" + encodeURIComponent(userClass))
+      .then(response => response.json())
+      .then(data => {
+        const list = document.getElementById("myHomeworkList");
+        list.innerHTML = "";
+
+        if (!data.success) {
+          list.innerHTML = `
+            <tr>
+              <td colspan="3">숙제를 불러오지 못했습니다.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        if (data.homeworks.length === 0) {
+          list.innerHTML = `
+            <tr>
+              <td colspan="3">등록된 숙제가 없습니다.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        data.homeworks.forEach(hw => {
+          list.innerHTML += `
+            <tr>
+              <td>${hw.target_class === "all" ? "전체" : hw.target_class}</td>
+              <td>${hw.title}</td>
+              <td class ="homework-content">${hw.content}</td>
+            </tr>
+          `;
+        });
+      });
+  }
+</script>
 
 <!-- Footer -->
 <footer>

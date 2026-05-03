@@ -17,12 +17,12 @@
 
 <!-- Navigation Bar -->
 <div class="navbar">
-  <a href="announce.html">공지사항</a>
+  <a href="announce.html">명예의 전당</a>
   <a href="test.html">단어</a>
   <a href="daily.html">데일리 완성도</a>
   <a href="hw.html">숙제</a>
 
-  <div class="nav-right">
+  <div class="nav-right" id="navRight">
       <a href="login.html">Login</a>
       <a href="yunsam.html">My Page</a>
   </div>
@@ -36,6 +36,36 @@
 </footer>
 
 </body>
+<script>
+function updateNavbar() {
+  const navRight = document.getElementById("navRight");
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!navRight) {
+    return;
+  }
+
+  if (loginUser) {
+    navRight.innerHTML = `
+      <a href="yunsam.html">My Page</a>
+      <a href="#" onclick="logout()">Logout</a>
+    `;
+  } else {
+    navRight.innerHTML = `
+      <a href="login.html">Login</a>
+      <a href="yunsam.html">My Page</a>
+    `;
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem("loginUser");
+  alert("로그아웃되었습니다.");
+  location.href = "login.html";
+}
+
+updateNavbar();
+</script>
 </html>
 
 

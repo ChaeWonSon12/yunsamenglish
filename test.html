@@ -17,14 +17,43 @@
 
 <!-- Navigation Bar -->
 <div class="navbar">
-  <a href="announce.html">공지사항</a>
+  <a href="announce.html">명예의 전당</a>
   <a href="test.html">단어</a>
   <a href="daily.html">데일리 완성도</a>
   <a href="hw.html">숙제</a>
 
-  <div class="nav-right">
+  <div class="nav-right" id="navRight"  >
       <a href="login.html">Login</a>
       <a href="yunsam.html">My Page</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="main">
+    <h2>나의 시험 및 출결 전체 기록</h2>
+
+    <label>월 선택: </label>
+    <input type="month" id="monthSelect">
+    <button onclick="loadMyMonthlyRecords()">조회</button>
+
+    <br><br>
+
+    <table border="1">
+      <tbody>
+        <tr id="testWeekRow">
+          <th>날짜</th>
+        </tr>
+        <tr id="testRangeRow">
+          <th>범위</th>
+        </tr>
+        <tr id="testAttendanceRow">
+          <th>출결</th>
+        </tr>
+        <tr id="testVocabRow">
+          <th>단어시험</th>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -36,6 +65,124 @@
 </footer>
 
 </body>
+<script>
+
+function updateNavbar() {
+  const navRight = document.getElementById("navRight");
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!navRight) {
+    return;
+  }
+
+  if (loginUser) {
+    navRight.innerHTML = `
+      <a href="yunsam.html">My Page</a>
+      <a href="#" onclick="logout()">Logout</a>
+    `;
+  } else {
+    navRight.innerHTML = `
+      <a href="login.html">Login</a>
+      <a href="yunsam.html">My Page</a>
+    `;
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem("loginUser");
+  alert("로그아웃되었습니다.");
+  location.href = "login.html";
+}
+
+updateNavbar();
+
+const loginUser = sessionStorage.getItem("loginUser");
+
+if (!loginUser) {
+  alert("로그인이 필요합니다.");
+  location.href = "login.html";
+} else {
+  const user = JSON.parse(loginUser);
+
+  document.getElementById("monthSelect").value =
+    new Date().toISOString().slice(0, 7);
+
+  loadMyMonthlyRecords();
+}
+
+const twiceAWeekClasses = ["고1 주2회", "고2 주2회", "중3"];
+
+function getWeeksByClass(className) {
+  if (twiceAWeekClasses.includes(className)) {
+    return [
+      { key: "week1_1", label: "Week 1-1" },
+      { key: "week1_2", label: "Week 1-2" },
+      { key: "week2_1", label: "Week 2-1" },
+      { key: "week2_2", label: "Week 2-2" },
+      { key: "week3_1", label: "Week 3-1" },
+      { key: "week3_2", label: "Week 3-2" },
+      { key: "week4_1", label: "Week 4-1" },
+      { key: "week4_2", label: "Week 4-2" }
+    ];
+  }
+
+  return [
+    { key: "week1", label: "Week 1" },
+    { key: "week2", label: "Week 2" },
+    { key: "week3", label: "Week 3" },
+    { key: "week4", label: "Week 4" }
+  ];
+}
+
+function loadMyMonthlyRecords() {
+  const user = JSON.parse(sessionStorage.getItem("loginUser"));
+  const month = document.getElementById("monthSelect").value;
+
+  Promise.all([
+    fetch(`/my-records/${user.user_id}?month=${month}`)
+      .then(res => res.json()),
+
+    fetch(`/test-ranges?class=${user.user_class}&month=${month}`)
+      .then(res => res.json())
+  ])
+  .then(([recordData, rangeData]) => {
+    if (!recordData.success) {
+      alert("기록 불러오기 실패");
+      return;
+    }
+
+    showRecords(
+      user.user_class,
+      recordData.records,
+      rangeData.success ? rangeData.ranges : []
+    );
+  });
+}
+
+function showRecords(userClass, records, ranges) {
+  const weeks = getWeeksByClass(userClass);
+
+  const weekRow = document.getElementById("testWeekRow");
+  const rangeRow = document.getElementById("testRangeRow");
+  const attendanceRow = document.getElementById("testAttendanceRow");
+  const vocabRow = document.getElementById("testVocabRow");
+
+  weekRow.innerHTML = "<th>날짜</th>";
+  rangeRow.innerHTML = "<th>범위</th>";
+  attendanceRow.innerHTML = "<th>출결</th>";
+  vocabRow.innerHTML = "<th>단어시험</th>";
+
+  weeks.forEach(week => {
+    const r = records.find(x => x.week === week.key);
+    const g = ranges.find(x => x.week === week.key);
+
+    weekRow.innerHTML += `<td>${week.label}</td>`;
+    rangeRow.innerHTML += `<td>${g ? g.vocab_range : "-"}</td>`;
+    attendanceRow.innerHTML += `<td>${r ? r.attendance || "-" : "-"}</td>`;
+    vocabRow.innerHTML += `<td>${r ? r.vocab_result || "-" : "-"}</td>`;
+  });
+}
+</script>
 </html>
 
 
