@@ -5,7 +5,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="main.css">
+
+<style>
+  .daily-wrap {
+    padding: 20px;
+  }
+
+  .daily-card {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .student-info {
+    margin-bottom: 20px;
+  }
+
+  .student-info h2 {
+    margin-bottom: 5px;
+  }
+
+  .daily-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
+
+  .daily-table th,
+  .daily-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+  }
+
+  .daily-table th {
+    background: #333;
+    color: white;
+  }
+
+  .percent-high {
+    background: #c8f0c8;
+    color: #146c2e;
+    font-weight: bold;
+  }
+
+  .percent-middle {
+    background: #fff4cc;
+    color: #8a5a00;
+    font-weight: bold;
+  }
+
+  .percent-low {
+    background: #ffc9c2;
+    color: #b42318;
+    font-weight: bold;
+  }
+
+  .percent-empty {
+    background: #e5e7eb;
+    color: #777;
+    font-weight: bold;
+  }
+</style>
 </head>
+
 <body>
 
 <!-- Header -->
@@ -28,6 +91,32 @@
   </div>
 </div>
 
+<div class="daily-wrap">
+  <div class="daily-card">
+    <div class="student-info">
+      <h2 id="studentName">데일리 완성도</h2>
+      <p id="studentClass">-</p>
+    </div>
+
+    <table class="daily-table">
+      <thead>
+        <tr>
+          <th>월</th>
+          <th>전체 데일리 개수</th>
+          <th>수행 개수</th>
+          <th>완성도</th>
+        </tr>
+      </thead>
+
+      <tbody id="myDailyBody">
+        <tr>
+          <td colspan="4">데일리 기록을 불러오는 중입니다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- Footer -->
 <footer>
   <h2>call: 070-4450-2260</h2>
@@ -35,7 +124,6 @@
   <p>*매주 일요일, 월요일은 학원 휴원일입니다.</p>
 </footer>
 
-</body>
 <script>
 function updateNavbar() {
   const navRight = document.getElementById("navRight");
@@ -65,7 +153,106 @@ function logout() {
 }
 
 updateNavbar();
+
+const dailyMonths = [
+  { key: "2026-01", label: "1월" },
+  { key: "2026-02", label: "2월" },
+  { key: "2026-03", label: "3월" },
+  { key: "2026-04", label: "4월" },
+  { key: "2026-05", label: "5월" },
+  { key: "2026-06", label: "6월" },
+  { key: "2026-07", label: "7월" },
+  { key: "2026-08", label: "8월" },
+  { key: "2026-09", label: "9월" },
+  { key: "2026-10", label: "10월" },
+  { key: "2026-11", label: "11월" },
+  { key: "2026-12", label: "12월" }
+];
+
+const loginUser = sessionStorage.getItem("loginUser");
+
+if (!loginUser) {
+  alert("로그인이 필요합니다.");
+  location.href = "login.html";
+} else {
+  const user = JSON.parse(loginUser);
+
+  document.getElementById("studentName").textContent =
+    user.school + " " + user.name + " 데일리 완성도";
+
+  document.getElementById("studentClass").textContent =
+    "반: " + user.user_class;
+
+  loadMyDaily(user.user_id, user.user_class);
+}
+
+function loadMyDaily(userId, userClass) {
+  fetch(
+    "/my-daily/" + encodeURIComponent(userId) +
+    "?class=" + encodeURIComponent(userClass)
+  )
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) {
+        alert(data.message);
+        return;
+      }
+
+      renderMyDaily(data.totalDailies, data.records);
+    });
+}
+
+function renderMyDaily(totalDailies, records) {
+  const tbody = document.getElementById("myDailyBody");
+  tbody.innerHTML = "";
+
+  dailyMonths.forEach(month => {
+    const totalDaily = totalDailies.find(daily =>
+      daily.month === month.key ||
+      daily.record_month === month.key
+    );
+
+    const record = records.find(daily =>
+      daily.month === month.key ||
+      daily.record_month === month.key
+    );
+
+    const totalCount = totalDaily ? Number(totalDaily.total_count) : 0;
+    const doneCount = record ? Number(record.done_count) : 0;
+
+    let percent = 0;
+
+    if (totalCount > 0) {
+      percent = Math.floor((doneCount / totalCount) * 100);
+    }
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${month.label}</td>
+        <td>${totalCount}</td>
+        <td>${doneCount}</td>
+        <td class="${getDailyPercentClass(percent)}">${percent}%</td>
+      </tr>
+    `;
+  });
+}
+
+function getDailyPercentClass(percent) {
+  if (percent >= 80) {
+    return "percent-high";
+  }
+
+  if (percent >= 50) {
+    return "percent-middle";
+  }
+
+  if (percent > 0) {
+    return "percent-low";
+  }
+
+  return "percent-empty";
+}
 </script>
+
+</body>
 </html>
-
-

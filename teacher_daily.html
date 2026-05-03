@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>월별 데일리 현황</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="main.css">
+
+  <style>
+    .daily-wrap {
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    .class-select-box {
+      margin-bottom: 20px;
+    }
+
+    .class-select-box select,
+    .class-select-box button {
+      height: 36px;
+      padding: 5px 12px;
+      font-size: 15px;
+      margin-right: 8px;
+    }
+
+    .month-toggle-box {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+    }
+
+    .month-toggle-box label {
+      margin-right: 12px;
+      font-size: 14px;
+    }
+
+    .table-scroll {
+      height: 500px;
+      overflow: auto;
+      border: 1px solid #ccc;
+      background: white;
+    }
+
+    .daily-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 1700px;
+      width: 100%;
+      text-align: center;
+      background: white;
+      font-size: 14px;
+    }
+
+    .daily-table th,
+    .daily-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      white-space: nowrap;
+      background: white;
+    }
+
+    .daily-table thead tr:first-child th {
+      position: sticky;
+      top: 0;
+      background: #333;
+      color: white;
+      z-index: 20;
+    }
+
+    .daily-table thead tr:nth-child(2) th {
+      position: sticky;
+      top: 35px;
+      background: #555;
+      color: white;
+      z-index: 19;
+    }
+
+    .daily-table thead tr:nth-child(3) th {
+      position: sticky;
+      top: 70px;
+      background: #777;
+      color: white;
+      z-index: 18;
+    }
+
+    .daily-table tr:hover td {
+      background-color: #f1f1f1;
+    }
+
+    .student-name {
+      font-weight: bold;
+      text-align: left;
+      background: #fafafa !important;
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      min-width: 100px;
+    }
+
+    .name-head {
+      position: sticky !important;
+      left: 0;
+      z-index: 30 !important;
+      background: #222 !important;
+      color: white;
+      min-width: 100px;
+    }
+
+    .daily-total-input,
+    .daily-count-input {
+      width: 70px;
+      height: 28px;
+      text-align: center;
+      font-weight: bold;
+      border: 1px solid #aaa;
+      border-radius: 8px;
+    }
+
+    .daily-count-input {
+      width: 60px;
+    }
+
+    .percent-cell {
+      font-weight: bold;
+      border-radius: 12px;
+    }
+
+    .percent-high {
+      background: #c8f0c8 !important;
+      color: #146c2e;
+    }
+
+    .percent-middle {
+      background: #fff4cc !important;
+      color: #8a5a00;
+    }
+
+    .percent-low {
+      background: #ffc9c2 !important;
+      color: #b42318;
+    }
+
+    .percent-empty {
+      background: #e5e7eb !important;
+      color: #777;
+    }
+
+    .empty-message {
+      text-align: center;
+      color: #777;
+      padding: 20px;
+    }
+
+    .hidden-month {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <img src="yunsam.jpeg" alt="img">
+</header>
+
+<div class="navbar">
+  <a href="teacher.html">학생 인원 관리</a>
+  <a href="teacher_hw.html">숙제 관리</a>
+  <a href="teacher_announce.html">공지사항 관리</a>
+  <a href="teacher_test.html">시험 관리</a>
+  <a href="teacher_daily.html">데일리 관리</a>
+</div>
+
+<div class="daily-wrap">
+  <h2>월별 데일리 현황</h2>
+
+  <div class="class-select-box">
+    <label>반 선택: </label>
+
+    <select id="classSelect">
+      <option value="">반을 선택하세요</option>
+      <option value="고3">고3</option>
+      <option value="고2 주2회">고2 주2회</option>
+      <option value="고2 주1회">고2 주1회</option>
+      <option value="고1 주2회">고1 주2회</option>
+      <option value="고1 주1회">고1 주1회</option>
+      <option value="중3">중3</option>
+      <option value="중2">중2</option>
+      <option value="중1">중1</option>
+    </select>
+
+    <button onclick="loadDailyTable()">불러오기</button>
+  </div>
+
+  <div class="month-toggle-box" id="monthToggleBox">
+    <b>월 표시 설정: </b>
+  </div>
+
+  <div class="table-scroll">
+    <table class="daily-table">
+      <thead id="dailyTableHead">
+        <tr>
+          <th>반을 선택하세요.</th>
+        </tr>
+      </thead>
+
+      <tbody id="dailyTableBody">
+        <tr>
+          <td class="empty-message">반을 선택하고 불러오기를 누르세요.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const loginUser = sessionStorage.getItem("loginUser");
+
+  if (!loginUser) {
+    alert("로그인이 필요합니다.");
+    location.href = "login.html";
+  } else {
+    const user = JSON.parse(loginUser);
+
+    if (user.role !== "teacher") {
+      alert("관리자만 접근할 수 있습니다.");
+      location.href = "yunsam.html";
+    }
+  }
+
+  const dailyMonths = [
+    { key: "2026-01", label: "1월" },
+    { key: "2026-02", label: "2월" },
+    { key: "2026-03", label: "3월" },
+    { key: "2026-04", label: "4월" },
+    { key: "2026-05", label: "5월" },
+    { key: "2026-06", label: "6월" },
+    { key: "2026-07", label: "7월" },
+    { key: "2026-08", label: "8월" },
+    { key: "2026-09", label: "9월" },
+    { key: "2026-10", label: "10월" },
+    { key: "2026-11", label: "11월" },
+    { key: "2026-12", label: "12월" }
+  ];
+
+  function loadDailyTable() {
+    const selectedClass = document.getElementById("classSelect").value;
+
+    if (selectedClass === "") {
+      alert("반을 선택하세요.");
+      return;
+    }
+
+    Promise.all([
+      fetch(
+        "/users?class=" + encodeURIComponent(selectedClass) +
+        "&status=approved"
+      ).then(response => response.json()),
+
+      fetch(
+        "/daily-summary?class=" + encodeURIComponent(selectedClass)
+      ).then(response => response.json())
+    ])
+      .then(([userData, dailyData]) => {
+        if (!userData.success) {
+          alert(userData.message);
+          return;
+        }
+
+        if (!dailyData.success) {
+          alert(dailyData.message);
+          return;
+        }
+
+        renderMonthToggles(dailyMonths);
+        renderDailyTableHead(dailyMonths, dailyData.totalDailies);
+        renderDailyTableBody(userData.users, dailyData.records, dailyMonths);
+      });
+  }
+
+  function renderMonthToggles(months) {
+    const box = document.getElementById("monthToggleBox");
+
+    box.innerHTML = `<b>월 표시 설정: </b>`;
+
+    months.forEach(month => {
+      box.innerHTML += `
+        <label>
+          <input 
+            type="checkbox" 
+            checked
+            onchange="toggleDailyMonth('${month.key}', this.checked)"
+          >
+          ${month.label}
+        </label>
+      `;
+    });
+  }
+
+  function toggleDailyMonth(monthKey, isChecked) {
+    const monthCells = document.querySelectorAll(`[data-month="${monthKey}"]`);
+
+    monthCells.forEach(cell => {
+      if (isChecked) {
+        cell.classList.remove("hidden-month");
+      } else {
+        cell.classList.add("hidden-month");
+      }
+    });
+  }
+
+  function renderDailyTableHead(months, totalDailies) {
+    const thead = document.getElementById("dailyTableHead");
+
+    let firstRow = `
+      <tr>
+        <th rowspan="3" class="name-head">이름</th>
+    `;
+
+    months.forEach(month => {
+      firstRow += `
+        <th colspan="2" data-month="${month.key}">
+          ${month.label}
+        </th>
+      `;
+    });
+
+    firstRow += `</tr>`;
+
+    let secondRow = `<tr>`;
+
+    months.forEach(month => {
+      const totalDaily = totalDailies.find(daily =>
+        daily.month === month.key ||
+        daily.record_month === month.key
+      );
+
+      const totalCount = totalDaily ? totalDaily.total_count : 0;
+
+      secondRow += `
+        <th colspan="2" data-month="${month.key}">
+          전체 데일리
+          <input
+            type="number"
+            min="0"
+            class="daily-total-input"
+            id="total_${month.key}"
+            value="${totalCount}"
+            onchange="saveDailyTotal('${month.key}', this.value)"
+          >
+        </th>
+      `;
+    });
+
+    secondRow += `</tr>`;
+
+    let thirdRow = `<tr>`;
+
+    months.forEach(month => {
+      thirdRow += `
+        <th data-month="${month.key}">수행 개수</th>
+        <th data-month="${month.key}">%</th>
+      `;
+    });
+
+    thirdRow += `</tr>`;
+
+    thead.innerHTML = firstRow + secondRow + thirdRow;
+  }
+
+  function renderDailyTableBody(users, records, months) {
+    const tbody = document.getElementById("dailyTableBody");
+    tbody.innerHTML = "";
+
+    if (users.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="${1 + months.length * 2}" class="empty-message">
+            해당 반에 등록된 학생이 없습니다.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    users.forEach(user => {
+      let row = `
+        <tr>
+          <td class="student-name">${user.name}</td>
+      `;
+
+      months.forEach(month => {
+        const record = records.find(daily =>
+          daily.user_id === user.user_id &&
+          (
+            daily.month === month.key ||
+            daily.record_month === month.key
+          )
+        );
+
+        const doneCount = record ? record.done_count : 0;
+        const totalInputId = "total_" + month.key;
+        const countInputId = user.user_id + "_" + month.key + "_daily_count";
+        const percentId = user.user_id + "_" + month.key + "_daily_percent";
+
+        row += `
+          <td data-month="${month.key}">
+            <input
+              type="number"
+              min="0"
+              class="daily-count-input"
+              id="${countInputId}"
+              value="${doneCount}"
+              onchange="saveDailyCount('${user.user_id}', '${month.key}', this.value)"
+            >
+          </td>
+
+          <td 
+            data-month="${month.key}" 
+            id="${percentId}"
+            class="percent-cell"
+          >
+            0%
+          </td>
+        `;
+      });
+
+      row += `</tr>`;
+      tbody.innerHTML += row;
+    });
+
+    updateAllDailyPercents();
+  }
+
+  function saveDailyTotal(monthKey, totalValue) {
+    const selectedClass = document.getElementById("classSelect").value;
+
+    if (!selectedClass) {
+      alert("반을 먼저 선택하세요.");
+      return;
+    }
+
+    fetch("/daily-total", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        record_month: monthKey,
+        user_class: selectedClass,
+        total_count: Number(totalValue)
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          alert(data.message);
+          return;
+        }
+
+        updateAllDailyPercents();
+      });
+  }
+
+  function saveDailyCount(userId, monthKey, doneValue) {
+    fetch("/daily-count", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        record_month: monthKey,
+        user_id: userId,
+        done_count: Number(doneValue)
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          alert(data.message);
+          return;
+        }
+
+        updateDailyPercent(userId, monthKey);
+      });
+  }
+
+  function updateAllDailyPercents() {
+    const users = document.querySelectorAll(".student-name");
+
+    users.forEach(nameCell => {
+      const row = nameCell.parentElement;
+
+      dailyMonths.forEach(month => {
+        const countInput = row.querySelector(`input[id$="${month.key}_daily_count"]`);
+
+        if (countInput) {
+          const userId = countInput.id.replace("_" + month.key + "_daily_count", "");
+          updateDailyPercent(userId, month.key);
+        }
+      });
+    });
+  }
+
+  function updateDailyPercent(userId, monthKey) {
+    const totalInput = document.getElementById("total_" + monthKey);
+    const countInput = document.getElementById(userId + "_" + monthKey + "_daily_count");
+    const percentCell = document.getElementById(userId + "_" + monthKey + "_daily_percent");
+
+    if (!totalInput || !countInput || !percentCell) {
+      return;
+    }
+
+    const totalCount = Number(totalInput.value);
+    const doneCount = Number(countInput.value);
+
+    let percent = 0;
+
+    if (totalCount > 0) {
+      percent = Math.floor((doneCount / totalCount) * 100);
+    }
+
+    percentCell.textContent = percent + "%";
+
+    percentCell.classList.remove(
+      "percent-high",
+      "percent-middle",
+      "percent-low",
+      "percent-empty"
+    );
+
+    percentCell.classList.add(getDailyPercentClass(percent));
+  }
+
+  function getDailyPercentClass(percent) {
+    if (percent >= 80) {
+      return "percent-high";
+    }
+
+    if (percent >= 50) {
+      return "percent-middle";
+    }
+
+    if (percent > 0) {
+      return "percent-low";
+    }
+
+    return "percent-empty";
+  }
+</script>
+
+</body>
+</html>

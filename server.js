@@ -99,6 +99,30 @@ db.run(`
   )
 `);
 
+// 월별 전체 데일리 개수 테이블
+db.run(`
+  CREATE TABLE IF NOT EXISTS daily_totals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_month TEXT NOT NULL,
+    user_class TEXT NOT NULL,
+    total_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(record_month, user_class)
+  )
+`);
+
+// 학생별 월별 데일리 수행 개수 테이블
+db.run(`
+  CREATE TABLE IF NOT EXISTS daily_counts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_month TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    done_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(record_month, user_id)
+  )
+`);
+
 // 회원가입
 app.post("/signup", (req, res) => {
   const { school, name, user_id, password, user_class } = req.body;
@@ -838,6 +862,213 @@ app.post("/test-ranges", (req, res) => {
     res.json({
       success: true,
       message: "단어 범위 저장 완료"
+    });
+  });
+});
+
+// 월별 데일리 현황 불러오기
+app.get("/daily-summary", (req, res) => {
+  const userClass = req.query.class;
+
+  if (!userClass) {
+    return res.json({
+      success: false,
+      message: "반 정보가 필요합니다."
+    });
+  }
+
+  const totalSql = `
+    SELECT record_month, user_class, total_count
+    FROM daily_totals
+    WHERE user_class = ?
+  `;
+
+  const countSql = `
+    SELECT
+      u.user_id,
+      u.name,
+      u.school,
+      u.user_class,
+      dc.record_month,
+      dc.done_count
+    FROM users u
+    LEFT JOIN daily_counts dc
+      ON u.user_id = dc.user_id
+    WHERE u.user_class = ?
+      AND u.status = 'approved'
+      AND u.user_id != '0000'
+    ORDER BY u.name ASC
+  `;
+
+  db.all(totalSql, [userClass], (err, totalRows) => {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "전체 데일리 개수 불러오기 실패"
+      });
+    }
+
+    db.all(countSql, [userClass], (err, countRows) => {
+      if (err) {
+        return res.json({
+          success: false,
+          message: "학생별 데일리 개수 불러오기 실패"
+        });
+      }
+
+      const totalDailies = totalRows.map(row => ({
+        record_month: row.record_month,
+        month: row.record_month,
+        total_count: row.total_count
+      }));
+
+      const records = countRows
+        .filter(row => row.record_month !== null)
+        .map(row => ({
+          user_id: row.user_id,
+          name: row.name,
+          record_month: row.record_month,
+          month: row.record_month,
+          done_count: row.done_count || 0
+        }));
+
+      res.json({
+        success: true,
+        totalDailies,
+        records
+      });
+    });
+  });
+});
+
+// 월별 전체 데일리 개수 저장
+app.post("/daily-total", (req, res) => {
+  const { record_month, user_class, total_count } = req.body;
+
+  if (!record_month || !user_class) {
+    return res.json({
+      success: false,
+      message: "월과 반 정보가 필요합니다."
+    });
+  }
+
+  const sql = `
+    INSERT INTO daily_totals (record_month, user_class, total_count)
+    VALUES (?, ?, ?)
+    ON CONFLICT(record_month, user_class)
+    DO UPDATE SET
+      total_count = excluded.total_count
+  `;
+
+  db.run(sql, [record_month, user_class, total_count || 0], function (err) {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "전체 데일리 개수 저장 실패"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "전체 데일리 개수 저장 완료"
+    });
+  });
+});
+
+// 학생별 월별 수행 개수 저장
+app.post("/daily-count", (req, res) => {
+  const { record_month, user_id, done_count } = req.body;
+
+  if (!record_month || !user_id) {
+    return res.json({
+      success: false,
+      message: "월과 학생 정보가 필요합니다."
+    });
+  }
+
+  const sql = `
+    INSERT INTO daily_counts (record_month, user_id, done_count)
+    VALUES (?, ?, ?)
+    ON CONFLICT(record_month, user_id)
+    DO UPDATE SET
+      done_count = excluded.done_count
+  `;
+
+  db.run(sql, [record_month, user_id, done_count || 0], function (err) {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "수행 개수 저장 실패"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "수행 개수 저장 완료"
+    });
+  });
+});
+
+// 학생 본인 데일리 기록 불러오기
+app.get("/my-daily/:user_id", (req, res) => {
+  const user_id = req.params.user_id;
+  const userClass = req.query.class;
+
+  if (!user_id || !userClass) {
+    return res.json({
+      success: false,
+      message: "학생 정보와 반 정보가 필요합니다."
+    });
+  }
+
+  const totalSql = `
+    SELECT record_month, user_class, total_count
+    FROM daily_totals
+    WHERE user_class = ?
+    ORDER BY record_month ASC
+  `;
+
+  const recordSql = `
+    SELECT record_month, user_id, done_count
+    FROM daily_counts
+    WHERE user_id = ?
+    ORDER BY record_month ASC
+  `;
+
+  db.all(totalSql, [userClass], (err, totalRows) => {
+    if (err) {
+      return res.json({
+        success: false,
+        message: "전체 데일리 개수 불러오기 실패"
+      });
+    }
+
+    db.all(recordSql, [user_id], (err, recordRows) => {
+      if (err) {
+        return res.json({
+          success: false,
+          message: "학생 데일리 기록 불러오기 실패"
+        });
+      }
+
+      const totalDailies = totalRows.map(row => ({
+        record_month: row.record_month,
+        month: row.record_month,
+        total_count: row.total_count
+      }));
+
+      const records = recordRows.map(row => ({
+        record_month: row.record_month,
+        month: row.record_month,
+        user_id: row.user_id,
+        done_count: row.done_count
+      }));
+
+      res.json({
+        success: true,
+        totalDailies,
+        records
+      });
     });
   });
 });

@@ -5,9 +5,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="log.css">
-<style>
-
-</style>
 </head>
 <body>
 
@@ -25,7 +22,7 @@
   <a href="hw.html">숙제</a>
 
   <div class="nav-right">
-      <a href="login.html">Login</a>
+      <a href="login.html">Login/Signup</a>
       <a href="yunsam.html">My Page</a>
   </div>
 </div>
@@ -37,82 +34,31 @@
               | <a href="signup.html">회원가입</a>
               | <a href="changepw.html">비밀번호 변경</a>
       </div>
-      <div class="box">
-          <form onsubmit="login(event)">
-              <div><label>출석코드: </label><input type="text" id= "loginId" name="id"/></div>
-              <div><label>비밀번호: </label><input type="password" id="loginPw" name="pw"/></div>
-              <div class="button">
-                  <input class="submit" type="submit" value="Login"/>
-                  <input class="reset" type="reset" value="Cancel"/>
-              </div>
+      <div class="box">  
+          <form onsubmit="changePassword(event)">
+            <div>
+              <label>출석코드: </label>
+              <input type="text" id="changeUserId" required>
+            </div>
+
+            <div>
+              <label>현재 비밀번호: </label>
+              <input type="password" id="currentPassword" required>
+            </div>
+
+            <div>
+              <label>새 비밀번호: </label>
+              <input type="password" id="newPassword" required>
+            </div>
+
+            <div class="button">
+              <input class="submit" type="submit" value="비밀번호 변경">
+            </div>
           </form>
       </div>
   </div>
 
   <script>
-    function login(event) {
-      event.preventDefault();
-
-      const user_id = document.getElementById("loginId").value;
-      const password = document.getElementById("loginPw").value;
-
-      fetch("/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          user_id: user_id,
-          password: password
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        alert(data.message);
-
-        if (data.success) {
-          sessionStorage.setItem("loginUser", JSON.stringify(data.user));
-
-          if (data.user.user_id === "teacher") {
-            location.href = "teacher.html";
-          } else {
-            location.href = "yunsam.html";
-          }
-        }
-      });
-    }
-  function login(event) {
-    event.preventDefault();
-
-    const user_id = document.getElementById("loginId").value;
-    const password = document.getElementById("loginPw").value;
-
-    fetch("/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        user_id: user_id,
-        password: password
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      alert(data.message);
-
-      if (data.success) {
-        sessionStorage.setItem("loginUser", JSON.stringify(data.user));
-
-        if (data.user.role === "teacher") {
-          location.href = "teacher.html";
-        } else {
-          location.href = "yunsam.html";
-        }
-      }
-    });
-  }
-
   function changePassword(event) {
     event.preventDefault();
 
