@@ -4,8 +4,8 @@ body {
 }
 .gomiddle    {text-align: center;}
 
-.submit  {background-color: greenyellow; color: black; border-radius: 5px; border-color: greenyellow;}
-.reset   {background-color: red;  color: white; border-radius: 5px; border-color: red;}
+.submit  {background-color: black; color: whitesmoke; border-radius: 5px; border-color: black;}
+.reset   {background-color: whitesmoke;  color: black; border-radius: 5px; border-color: whitesmoke;}
 .button  {text-align: left; padding-top: 10px; padding-left: 20px;}
 .box      {border: 1px solid black;
            padding: 20px;
@@ -116,3 +116,12 @@ footer {
   }
 }
 
+.copyright {
+  margin-top: 15px; 
+  font-size: 13px;
+  color: #777;
+}
+
+a {
+  color:black
+}

@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" type="text/css" href="main.css">
+<link rel="icon" type="image/png" href="logo.png">
 <style>
   .side {
     display: flex;
@@ -44,9 +45,10 @@
       공지사항을 불러오는 중입니다.
     </div>
     <div class="bottom-links">
-      <p><a href="https://cloudlearning.atedu.co.kr/" target="_blank" style="color: black;"><b>이서당 바로가기</b></a></p>
+      <p><a href="https://yunsamenglish.atedu.co.kr/" target="_blank" style="color: black;"><b>이서당 바로가기</b></a></p>
       <p><a href="https://blog.naver.com/PostList.naver?blogId=yunsam_english_gimpo&from=postList&categoryNo=1" target="_blank" style="color: black;"><b>윤쌤영어 블로그 바로가기</b></a></p>
-      <p><a href="#" target="_blank" style="color: black;"><b>결석계 제출 바로가기</b></a></p>
+      <p><a href="https://forms.gle/JwiXXYg2hnKJ7FA5A" target="_blank" style="color: black;"><b>결석계 제출 바로가기</b></a></p>
+      <p><a href="숙제예시.pdf" download style="color: black;""><b>Q.숙제는 어떻게 하나요?</b></a></p>
     </div>
   </div>
 
@@ -101,6 +103,25 @@
       </tr>
     </thead>
     <tbody id="myHomeworkList">
+      <tr>
+        <td colspan="3">-</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<br><br><br><br>
+<div class="daily">
+  <h2>지난 데일리 완성도</h2>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>월</th>
+        <th>전체 데일리 개수</th>
+        <th>완성도</th>
+      </tr>
+    </thead>
+    <tbody id="myDailyList">
       <tr>
         <td colspan="3">-</td>
       </tr>
@@ -177,6 +198,75 @@ updateNavbar();
 </script>
 
 <script>
+function loadDaily(userId, userClass, targetMonth) {
+  fetch(
+    "/my-daily/" + encodeURIComponent(userId) +
+    "?class=" + encodeURIComponent(userClass)
+  )
+    .then(response => response.json())
+    .then(data => {
+      const list = document.getElementById("myDailyList");
+      list.innerHTML = "";
+
+      if (!data.success) {
+        list.innerHTML = `
+          <tr>
+            <td colspan="3">데일리 기록을 불러오지 못했습니다.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      const totalDaily = data.totalDailies.find(daily =>
+        daily.record_month === targetMonth ||
+        daily.month === targetMonth
+      );
+
+      const record = data.records.find(daily =>
+        daily.record_month === targetMonth ||
+        daily.month === targetMonth
+      );
+
+      const totalCount = totalDaily ? Number(totalDaily.total_count) : 0;
+      const doneCount = record ? Number(record.done_count) : 0;
+
+      let percent = 0;
+
+      if (totalCount > 0) {
+        percent = Math.floor((doneCount / totalCount) * 100);
+      }
+
+      const monthNumber = Number(targetMonth.slice(5, 7));
+      const percentClass = getDailyPercentClass(percent);
+
+      list.innerHTML = `
+        <tr>
+          <td>${monthNumber}월</td>
+          <td>${totalCount}</td>
+          <td class="${percentClass}">${percent}%</td>
+        </tr>
+      `;
+    });
+}
+
+function getDailyPercentClass(percent) {
+  if (percent >= 80) {
+    return "percent-high";
+  }
+
+  if (percent >= 50) {
+    return "percent-middle";
+  }
+
+  if (percent > 0) {
+    return "percent-low";
+  }
+
+  return "percent-empty";
+}
+</script>
+
+<script>
   const loginUser = sessionStorage.getItem("loginUser");
 
   if (loginUser) {
@@ -190,9 +280,15 @@ updateNavbar();
     
     const currentMonth = new Date().toISOString().slice(0, 7);
 
+    const lastMonthDate = new Date();
+    lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+    const lastMonth = lastMonthDate.toISOString().slice(0, 7);
+
+
     loadMyHomeworks(user.user_class);
     loadNotices(user.user_class);
     loadMyRecords(user.user_id, user.user_class, currentMonth);
+    loadDaily(user.user_id, user.user_class, lastMonth);
   } else {
     document.getElementById("userName").textContent =
       "로그인이 필요합니다";
@@ -318,11 +414,15 @@ function loadMyHomeworks(userClass) {
 }
 </script>
 
+
 <!-- Footer -->
 <footer>
   <h2>call: 070-4450-2260</h2>
   <h3>위치: 경기 김포시 사우중로 73번길 38 3층</h3>
   <p>*매주 일요일, 월요일은 학원 휴원일입니다.</p>
+   <p class="copyright">
+    Copyright © 2026 Yunsam English. All rights reserved.
+  </p>
 </footer>
 
 </body>

@@ -4,6 +4,7 @@
   <title>월별 데일리 현황</title>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="main.css">
+  <link rel="icon" type="image/png" href="logo.png">
 
   <style>
     .daily-wrap {
@@ -45,8 +46,8 @@
     .daily-table {
       border-collapse: separate;
       border-spacing: 0;
-      min-width: 1700px;
       width: 100%;
+      table-layout: fixed;
       text-align: center;
       background: white;
       font-size: 14px;
@@ -244,6 +245,10 @@
     { key: "2026-12", label: "12월" }
   ];
 
+  function getCurrentMonthKey() {
+    return new Date().toISOString().slice(0, 7);
+  }
+
   function loadDailyTable() {
     const selectedClass = document.getElementById("classSelect").value;
 
@@ -273,28 +278,47 @@
           return;
         }
 
-        renderMonthToggles(dailyMonths);
         renderDailyTableHead(dailyMonths, dailyData.totalDailies);
         renderDailyTableBody(userData.users, dailyData.records, dailyMonths);
+        renderMonthToggles(dailyMonths);
+        showCurrentMonthOnly(dailyMonths);
+      })
+      .catch(error => {
+        console.error(error);
+        alert("데일리 표를 불러오는 중 오류가 발생했습니다.");
       });
   }
 
   function renderMonthToggles(months) {
     const box = document.getElementById("monthToggleBox");
+    const currentMonth = getCurrentMonthKey();
 
     box.innerHTML = `<b>월 표시 설정: </b>`;
 
     months.forEach(month => {
+      const isChecked = month.key === currentMonth ? "checked" : "";
+
       box.innerHTML += `
         <label>
-          <input 
-            type="checkbox" 
-            checked
+          <input
+            type="checkbox"
+            class="month-toggle"
+            value="${month.key}"
+            ${isChecked}
             onchange="toggleDailyMonth('${month.key}', this.checked)"
           >
           ${month.label}
         </label>
       `;
+    });
+  }
+
+  function showCurrentMonthOnly(months) {
+    const currentMonth = getCurrentMonthKey();
+
+    months.forEach(month => {
+      const isCurrentMonth = month.key === currentMonth;
+      toggleDailyMonth(month.key, isCurrentMonth);
     });
   }
 
@@ -400,7 +424,6 @@
         );
 
         const doneCount = record ? record.done_count : 0;
-        const totalInputId = "total_" + month.key;
         const countInputId = user.user_id + "_" + month.key + "_daily_count";
         const percentId = user.user_id + "_" + month.key + "_daily_percent";
 
@@ -416,8 +439,8 @@
             >
           </td>
 
-          <td 
-            data-month="${month.key}" 
+          <td
+            data-month="${month.key}"
             id="${percentId}"
             class="percent-cell"
           >
@@ -460,6 +483,10 @@
         }
 
         updateAllDailyPercents();
+      })
+      .catch(error => {
+        console.error(error);
+        alert("전체 데일리 개수 저장 중 오류가 발생했습니다.");
       });
   }
 
@@ -483,6 +510,10 @@
         }
 
         updateDailyPercent(userId, monthKey);
+      })
+      .catch(error => {
+        console.error(error);
+        alert("수행 개수 저장 중 오류가 발생했습니다.");
       });
   }
 

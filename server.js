@@ -1073,6 +1073,6 @@ app.get("/my-daily/:user_id", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`서버 실행 중: http://localhost:${PORT}`);
+app.listen(3000, '0.0.0.0', () => {
+  console.log('Server running');
 });
